@@ -1,3 +1,8 @@
 [
-    "introduction"
+    "introduction",
+    {
+        "type": "dir",
+        "name": "makepad-workshop-gosim-beijing-2024",
+        "label": "GOSIM Beijing 2024 Makepad Workshop"
+    }
 ]

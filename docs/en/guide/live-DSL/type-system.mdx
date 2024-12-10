@@ -1,0 +1,358 @@
+# 类型系统
+
+了解 Live DSL 中的类型系统，有助于编写和调试 Live 代码。
+
+## LiveValue 类型
+
+```rust
+#[derive(Clone, Debug, PartialEq)]
+pub enum LiveValue {
+    None,
+    // string types
+    Str(&'static str),
+    String(Arc),
+    InlineString(InlineString),
+    Dependency(Arc),
+    Bool(bool),
+    Int64(i64),
+    Uint64(u64),
+    Float32(f32),
+    Float64(f64),
+    Color(u32),
+    Vec2(Vec2),
+    Vec3(Vec3),
+    Vec4(Vec4),
+    Id(LiveId),
+    IdPath(Arc>),
+    ExprBinOp(LiveBinOp),
+    ExprUnOp(LiveUnOp),
+    ExprMember(LiveId),
+    ExprCall {ident: LiveId, args: usize},
+     // enum thing
+    BareEnum (LiveId),
+    // tree items
+    Root{id_resolve:Box>},
+    Array,
+    Expr,// {expand_index: Option},
+    TupleEnum (LiveId),
+    NamedEnum (LiveId),
+    Object,
+    Clone{clone:LiveId, design_info:LiveDesignInfoIndex},
+    Deref{live_type: LiveType, clone:LiveId, design_info:LiveDesignInfoIndex},
+    Class {live_type: LiveType, class_parent: LivePtr, design_info:LiveDesignInfoIndex},
+    Close,
+
+    // shader code and other DSLs
+    DSL {
+        token_start: u32,
+        token_count: u32,
+        expand_index: Option
+    },
+    Import (Box),
+}
+```
+LiveValue 中这些特殊的变体代表了 Live DSL 中支持的类型：
+
+```rust
+Component = {
+    // 基础类型的使用
+    name: "Component",         // Str
+    enabled: true,            // Bool
+    width: 100,              // Int64
+    height: 50.5,            // Float64
+    color: #ff0000,          // Color
+    position: vec2(10, 20),  // Vec2
+
+    // 资源依赖
+    icon: dep("crate://self/icons/home.svg"),  // Dependency
+
+    // 表达式
+    scale: (base_size * 2),   // ExprBinOp
+    visible: (!hidden),       // ExprUnOp
+
+    // 枚举
+    status: Active,           // BareEnum
+    point: Point(10, 20),     // TupleEnum
+    user: User {              // NamedEnum
+        name: "John",
+        age: 30
+    },
+}
+```
+
+以下是一些重点类型的说明：
+
+### 字符串相关类型
+    - `Str(&'static str)`: 静态字符串引用,编译时确定,存储在程序二进制中
+    - `String(Arc<str>)`: 动态字符串,通过 Arc 智能指针包裹实现共享所有权
+    - `InlineString`: 短字符串优化,直接内联存储而不使用堆内存
+
+编译器会根据上下文和使用场景自动选择最合适的字符串表示形式。
+
+```rust
+// 解码字符串后,根据长度选择合适的 LiveValue 类型
+if let Some(v) = decode_str(data, &mut o)? {
+    let value = if let Some(inline_str) = InlineString::from_str(v) {
+        // 如果字符串够短,使用 InlineString
+        LiveValue::InlineString(inline_str)
+    } else {
+        // 否则使用 Arc<String>
+        LiveValue::String(Arc::new(v.to_string()))
+    };
+    self.push(LiveNode {id, origin, value});
+}
+
+// example
+struct Button {
+    id: InlineString,  // 栈上固定大小
+    text: Arc<String>, // 共享堆内存
+    class: &'static str, // 零开销
+}
+```
+### 结构组织相关
+
+- `Root`: 代表 Live 文档的根节点,包含 id_resolve 来解析标识符
+- `Class`: 用于定义组件类,包含:
+    - live_type: 组件的类型信息
+    - class_parent: 父类的引用
+    - design_info: 设计时的额外信息
+- `Close`: 表示一个区块的结束,配合 Object/Array 等使用
+- `Object`: 表示一个对象的开始
+- `Array`: 表示一个数组的开始
+
+### DSL 相关
+
+- `DSL`: 用于嵌入领域特定语言(Domain Specific Language),如着色器代码
+    - token_start/count: 标记 DSL 代码在 token 流中的位置
+    - expand_index: 宏展开相关
+
+### 模块系统
+
+- `Import`: 用于导入模块,包含模块的路径和内容
+
+### 特殊值处理
+
+- `Clone`: 复制一个已有组件,包含:
+    - clone: 被复制组件的 ID
+    - design_info: 设计时信息
+- `Deref`: 解引用一个组件引用,包含:
+    - live_type: 组件类型
+    - clone: 组件 ID
+    - design_info: 设计时信息
+
+```rust
+live_design!{
+    // 导入其他模块
+    use link::button::Button; // 生成 Import 变体
+
+	// LiveValue::Class 创建一个组件
+    App = {{App}} {
+        ui: <Root> {
+            flow: Right,
+            // Object 变体开始
+            buttons: {
+                save_button: <Button> {
+                    text: "Save"
+                    onClick: Save
+                }
+                cancel_button: <Button> {
+                    text: "Cancel"
+                }
+            } // Close 变体结束
+
+            // Array 变体示例
+            colors: [
+                #f00,
+                #0f0,
+                #00f
+            ]
+        }
+    }
+
+
+	// 根节点下定义各种组件
+    MyButton = <Button> {
+        // Button 的类型信息会被编译为 LiveValue::Deref
+        width: 100
+        height: 40
+        draw_bg: {color: #f00}
+    }
+
+    // 克隆已有组件
+    DefaultButton = <Button>{}  // 生成 Clone 变体
+
+    // 使用解引用
+    ButtonRef = <ButtonBase> {  // 生成 Deref 变体
+        walk: {width: Fill}
+    }
+
+
+}
+```
+## 扩展阅读：序列化与反序列化格式
+
+Makepad Live 值在运行时会经过序列化和反序列化的过程。为此，Makepad 采用了 [CBOR](https://datatracker.ietf.org/doc/html/rfc8949) (Concise Binary Object Representation，简明二进制对象表示法) 格式。
+
+`CBOR` 有几个关键特点使其非常适合 Makepad:
+
+### 1. 编码紧凑
+
+```rust
+// CBOR 的类型信息和长度通常只需要1个字节
+const CBOR_UTF8_START: u8 = 0x60;  // 字符串(0-23字节)
+const CBOR_ARRAY_START: u8 = 0x80; // 数组(0-23个元素)
+const CBOR_MAP_START: u8 = 0xa0;   // 映射(0-23个键值对)
+
+// 示例
+let value = "ok";
+// CBOR: [0x62, b'o', b'k']  // 3字节
+// JSON: "\\"ok\\""            // 4字节
+```
+
+### 2. 自描述和类型安全
+
+```rust
+// CBOR 内置支持多种数据类型
+impl LiveValue {
+    fn to_cbor(&self) -> Vec<u8> {
+        match self {
+            LiveValue::Int64(i) => [0x1b, /* 8字节整数 */],
+            LiveValue::Float64(f) => [0xfb, /* 8字节浮点 */],
+            LiveValue::Bool(true) => [0xf5],
+            LiveValue::Bool(false) => [0xf4],
+            LiveValue::String(_) => [0x60 + len, /* UTF8字节 */],
+            // ...
+        }
+    }
+}
+```
+
+### 3. 增量解析能力
+
+```rust
+// CBOR 可以流式解析
+fn parse_cbor(data: &[u8], offset: &mut usize) -> Result<LiveValue> {
+    match data[*offset] {
+        tag if tag >= CBOR_UTF8_START => {
+            // 直接获取字符串长度
+            let len = (tag - CBOR_UTF8_START) as usize;
+            *offset += 1;
+            // 只需解析需要的部分
+            let str_data = &data[*offset..*offset + len];
+            *offset += len;
+            Ok(LiveValue::String(str_data))
+        }
+        // ...
+    }
+}
+```
+### 4. 二进制友好
+
+```rust
+// 支持直接字节操作
+fn read_u16(data: &[u8], o: &mut usize) -> u16 {
+    let val = u16::from_be_bytes([data[*o], data[*o + 1]]);
+    *o += 2;
+    val
+}
+
+// 支持零拷贝
+fn decode_str<'a>(data: &'a [u8]) -> &'a str {
+    // 直接从字节切片创建字符串引用
+    std::str::from_utf8(&data[start..end]).unwrap()
+}
+```
+### 5. 扩展性好
+
+```rust
+// CBOR 支持自定义标签
+const CBOR_TAG_DATE_TIME: u64 = 0;
+const CBOR_TAG_BIGNUM: u64 = 2;
+const CBOR_TAG_CUSTOM: u64 = 27; // Makepad自定义标签
+
+// 可以添加自定义类型
+fn encode_custom_type(&self) -> Vec<u8> {
+    let mut data = vec![];
+    data.push(CBOR_TAG_CUSTOM);
+    // ... 编码自定义数据
+    data
+}
+```
+
+### 6. 性能优势
+
+```rust
+// 1. 快速类型检查
+fn is_string(byte: u8) -> bool {
+    byte >= CBOR_UTF8_START && byte <= CBOR_UTF8_END
+}
+
+// 2. 高效的长度获取
+fn get_length(byte: u8) -> usize {
+    (byte - CBOR_UTF8_START) as usize  // 单字节操作
+}
+
+// 3. 直接内存访问
+fn get_bytes(data: &[u8], o: &mut usize) -> &[u8] {
+    let slice = &data[*o..*o + len];
+    *o += len;
+    slice
+}
+```
+
+### 7. 适合热重载
+
+```rust
+// 1. 容易比较变化
+fn detect_changes(old: &[u8], new: &[u8]) -> Changes {
+    // CBOR 格式便于逐字节比较
+}
+
+// 2. 支持部分更新
+fn apply_patch(original: &mut [u8], patch: &[u8]) {
+    // 可以只更新变化的部分
+}
+```
+
+总的来说，`CBOR` 为 Makepad 提供了:
+
+1. 高效的序列化/反序列化
+2. 良好的扩展性
+3. 适合热重载的特性
+4. 二进制友好的操作
+5. 自描述的类型系统
+
+## 导入 与 资源依赖
+
+### 导入其他 Live DSL 模块
+
+```rust
+// 导入单个组件
+use makepad_widgets::base::Button
+
+// 导入整个模块
+use makepad_widgets::theme_desktop_dark::*
+
+// 带别名的导入
+use makepad_widgets::base::Button as CustomButton
+pub CustomButton
+```
+### 资源依赖
+
+```rust
+MyComponent = {
+    // 引用项目内的资源
+    icon: dep("crate://self/resources/icons/home.svg"),
+
+    // 引用外部包的资源
+    theme: dep("crate://makepad-widgets/resources/theme.json")
+
+	// 引用外部字体
+    // <https://github.com/lxgw/LxgwWenKai>
+    // 霞鹜文楷
+    TEXT_LXG_BOLD_FONT = {
+        font_size: (FONT_SIZE_SUB),
+        font: {path: dep("crate://makepad-widgets/resources/LXGWWenKaiBold.ttf")}
+    }
+}
+```

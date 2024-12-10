@@ -4,6 +4,7 @@ import { defineConfig } from 'rspress/config';
 // plugins
 import mermaid from 'rspress-plugin-mermaid';
 import alignImage from 'rspress-plugin-align-image';
+import { pluginRss } from '@rspress/plugin-rss';
 
 export default defineConfig({
   base: '/makepad-book/',
@@ -15,7 +16,10 @@ export default defineConfig({
   globalStyles: path.join(__dirname, 'theme', 'index.css'),
   plugins: [
     mermaid(),
-    alignImage()
+    alignImage(),
+    pluginRss({
+      siteUrl: 'https://project-robius-china.github.io/makepad-book/',
+    }),
   ],
   logo: {
     light: '/logo_makepad.svg',

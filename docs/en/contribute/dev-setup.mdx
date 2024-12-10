@@ -1,0 +1,35 @@
+# 开发环境搭建
+
+import { PackageManagerTabs } from '@theme';
+
+## 准备工作
+
+Makepad之书 使用 Rust 和 Rspress 来构建。
+
+### 安装 Rust
+
+- 请参考 [Rust 官方安装指南](https://www.rust-lang.org/tools/install) 安装 Rust。
+- 如果你在使用 VS Code，我们推荐安装 [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) 扩展。
+
+### 运行项目
+
+Makepad之书 使用 `pnpm` 作为包管理工具。
+
+- 请参考 [pnpm 官方安装指南](https://pnpm.io/zh/installation) 安装 pnpm。
+
+:::tip 提示
+
+若你已经安装了 `npm`、`yarn`，你可以使用 `npm` 或 `yarn` 来安装`pnpm`。
+
+<PackageManagerTabs command="install -g pnpm" />
+
+:::
+
+
+实际上，你只需要运行以下命令即可：
+
+``` bash
+pnpm install  # 安装依赖
+pnpm run dev  # 启动项目
+```
+

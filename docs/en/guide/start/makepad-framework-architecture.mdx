@@ -1,0 +1,180 @@
+# Makepad Framework Architecture
+
+> ⚠️ Base on `rik` branch.
+>
+> 源码地址: [https://github.com/makepad/makepad/tree/rik](https://github.com/makepad/makepad/tree/rik)
+
+
+The `Makepad Framework` consists of two main parts:
+
+- makepad-platform： platform abstraction layer. It abstracts and encapsulates various operations across platforms.
+- makepad-widget：makepad built-in UI Widget component library. It provides a set of built-in widget components for building user interfaces and a system of preservation mode widgets that support DSL design.
+
+## Makepad Platform
+
+Makepad Platform serves as the platform abstraction layer, meaning it provides abstractions and encapsulations for various cross-platform operations.
+It primarily includes the following components:：
+
+- A window system with keyboard, mouse, and touch input support
+- A shader compiler and graphics interface
+- Network interfaces
+- Video and audio interfaces
+- The Live system (a key Makepad feature)
+
+### Platform Code Architecture
+
+The platform's code is organized into the following structure:
+
+Source code: [https://github.com/makepad/makepad/tree/rik/platform](https://github.com/makepad/makepad/tree/rik/platform)
+
+```
+  - derive_live
+  - live_compiler
+  - live_tokenizer
+  - shader_compiler
+  - src
+  - Cargo.toml
+  - build.rs
+```
+
+- `derive_live / live_compiler / live_tokenizer` are part of the Live system.
+- `shader_compiler`: shader compiler.
+
+In Makepad's platform/src directory, we find multiple Rust source files (.rs files) and subdirectories, which can be categorized as follows:
+
+- **Core Module (`cx.rs`)**: Contains the core data structures and functions for the Makepad platform layer (e.g., context, configuration parameters).
+- **Rendering and Graphics (`draw_list.rs`, `draw_matrix.rs`, `draw_shader.rs`, `draw_vars.rs`)**: These files handle graphics rendering logic, including shader management, render queues, and transformation matrix processing.
+- **Event Handling  (`event`)**: Essential for UI frameworks, this directory contains code for handling various user inputs and system events.
+- **Operating System-Specific Code (`os`)**: Contains platform-specific implementations for different operating systems.
+- **Audio and Media  (`audio.rs`, `audio_stream.rs`, `media_api.rs`, `midi.rs`)**:  Implements audio playback, media streaming, and MIDI device interaction functionality.
+- **Networking and Communication  (`web_socket.rs`)**: WebSocket implementation for network communication and data exchange.
+- **Window Management and Input (`window.rs`, `cursor.rs`)**:  Implements window creation, management, and cursor handling functionality.
+
+It's evident that the `src` directory primarily encapsulates cross-platform low-level interfaces related to events, UI rendering, audio/video, and networking. We'll postpone diving into the details and instead explore the Live system.
+
+### The Live System
+
+The Live system is Makepad's solution for real-time coding. Since Rust is a statically compiled language and doesn't support runtime coding like dynamic languages, Makepad provides this Live system to achieve real-time coding effects. As demonstrated in the vision video from chapter one, UI updates can be made through real-time code modifications without recompiling.
+
+> Currently, real-time reloading (live reload) with WYSIWYG effects can be seen using Makepad Studio and VSCode. Support for additional IDEs and editors is planned.
+
+The Live system is implemented using Rust macros. Here's an example of Live syntax:
+
+```rust
+live_design! {
+    Button = {{Button}} {
+		color: #f00
+    }
+}
+
+#[derive(Live)]
+pub struct Button {
+	#[live] color: DVec4,
+}
+```
+
+This code defines a "Button" with configurable color.
+
+The procedural macros `live_design!`, `#[derive(Live)]`, and `#[live]` are part of the Live system, working together on the `Button` struct to create this widget.
+
+- `#[derive(Live)]` is a Rust derive macro that automatically implements the `Live` trait for the `Button` struct, providing all necessary mechanisms for the button control to interact with the Live system. 
+
+- `#[live]` attribute defines which fields of the `Button` struct participate in real-time updates, in this case, the color field.
+
+- `live_design!` macro functions similarly to CSS styling, defining basic styles for the button widget, such as setting the default color to `#f00`.
+
+![Live system working mechanism](https://trusted-heron-8b2.notion.site/image/https%3A%2F%2Fprod-files-secure.s3.us-west-2.amazonaws.com%2Fee83deb1-85d6-437c-894c-b4353fce458b%2Fffe5d0ec-b56a-43a3-aa0f-e55381ef3423%2FUntitled.png?table=block&id=9480e9d9-63ad-4426-b68d-f829452387d8&spaceId=ee83deb1-85d6-437c-894c-b4353fce458b&width=1420&userId=&cache=v2)
+
+We'll postpone diving into the Live system's working principles and focus on understanding its purpose and syntax. 
+
+More details will be presented later in the [Live DSL](/guide/live-DSL/index) section.
+
+#### MPSL Shader DSL Language
+
+The Live system includes MPSL (Makepad's custom shader language), a unified language that can be translated into shader languages for various graphics APIs (OpenGL/DirectX/Metal).
+
+Here's an example:
+
+```rust
+
+live_design!{
+		DrawColor = {{DrawColor}} {
+				fn pixel(self) -> vec4 {
+					return vec4(self.color.rgb * self.color.a, self.color.a);
+				}
+		}
+}
+
+#[derive(Live)]
+#[repr(C)]
+pub struct DrawColor {
+		#[deref] pub draw_super: DrawQuad,
+		#[live] pub color: Vec4,
+}
+
+```
+
+MPSL code can be embedded within Live DSL code. The `DrawColor` struct's `draw_super` field of type `DrawQuad` indicates that this struct inherits `DrawQuad` behavior (by implementing the `deref` trait for this field). This is a Rust/C technique that acts as a form of behavior delegation. `DrawQuad` is a feature provided by Makepad's draw crate, representing the basic shader for drawing arbitrary quadrilaterals.
+
+:::info Note
+
+Using the Deref trait for inheritance is considered an anti-pattern, as Deref's implicit behavior contradicts Rust's philosophy of explicitness.
+
+However, this example is acceptable as it conveniently leverages the framework's capabilities without abuse.
+
+:::
+
+The `#[repr(C)]` attribute in the example is required by the MPSL shader language, specifying C-ABI compatible layout for the struct to prevent the Rust compiler from reordering fields.
+
+More details will be presented later in the [shading language](/guide/shading-language/index) section.
+
+#### Why Not Use a Scripting Language?
+
+You might question the Live System approach: Why not use JavaScript/Lua, or develop a custom scripting language like Slint? Why specifically use this Rust macro approach?
+
+Code written in scripting languages can be interpreted or recompiled during runtime, shortening the development cycle. Unfortunately, scripting languages lack the performance advantages of compiled languages, conflicting with Makepad's goal of supporting heavily rendered applications. When combining scripting languages with Rust, code ownership becomes difficult to balance, as the optimal solution varies by application.
+
+This hybrid approach was chosen to address these challenges:
+
+- Makepad applications are written in Rust, while aspects controlling application appearance (like styling) are written in Live DSL. 
+
+- The Live language's primary function is similar to CSS: it describes how the application's user interface should be presented. Like CSS, the Live language facilitates easy style overriding.
+
+Unlike Rust code, Live code is compiled and executed at runtime. Additionally, future visual designers for Makepad (like Makepad Studio) will be able to identify which code sections are Live code.
+
+When modifying Live code using a visual designer, the designer won't recompile the application but instead sends the updated Live code to the running application. This allows the application to recompile and execute the new Live code, immediately reflecting code changes without recompiling Rust code or restarting the application.
+
+### Drawing Layer
+
+Makepad's 2D and 3D drawing layer is also included in the Makepad platform.
+
+The drawing layer includes:
+
+- Immediate mode 2D context
+- Layout system (can be viewed as a nested box model, executed in semi-immediate mode)
+- Font engine
+- Vector engine
+- Image decoder
+- Basic shaders
+- Shader standard library
+
+More details about the drawing layer will be covered in later dedicated chapters.。
+
+## Makepad Widget
+
+Parallel to `Makepad Platform` is `Makepad Widget`, built on top of makepad draw.
+
+It includes:
+
+- A set of built-in basic widgets, including buttons, checkboxes, lists, and other common controls
+- A retained mode widget system supporting DSL design
+
+The makepad-widget `src` directory contains many files representing different UI controls that can be categorized as follows:
+
+1. Widget Implementations: Such as `button.rs`, `check_box.rs`, `slider.rs`, `text_input.rs`,implementing various UI controls.
+2. Support Functions: Such as `image_cache.rs`, `keyboard_view.rs`, `scroll_bars.rs`,providing additional functionality supporting widget display and interaction.
+3. Special Widgets: Such as `color_picker.rs`, `popup_menu.rs`, `tab_bar.rs`,representing more complex or specific-purpose controls.
+4. Layout and Views: Such as `dock.rs`, `splitter.rs`, `view.rs`, used for organizing and managing UI widget layouts.
+5. Event-Related:`widget_match_event.rs` handles event processing mechanisms.
+
+More details will be covered in the [Makepad Widget](/guide/widget/index) chapter.

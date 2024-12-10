@@ -1,0 +1,123 @@
+# 语法基础
+
+## 属性
+
+属性用于数据绑定。在 Live DSL 中属性主要分为两类：
+
+- 字段属性( `:` )，通常用于定义该类型声明的固有属性或结构性属性,这些属性是类型定义的一部分
+- 实例属性(`=`)，通常用于定义继承或覆盖的属性
+
+### 字段属性（Field Properties）
+
+使用冒号(`:`)定义，通常用于定义组件的固有属性：
+
+```rust
+MyWidget = {{Widget}} {
+    // 字段属性示例
+    color: #f00,         // 颜色属性
+    width: 100,         // 数值属性
+    visible: true,      // 布尔属性
+    name: "button",     // 字符串属性
+    padding: {          // 嵌套字段属性
+        left: 10,
+        right: 10
+    }
+}
+```
+**字段属性的特点**:
+
+- 用于定义组件的基本属性和状态
+- 值会直接映射到 Rust 结构体的字段
+- 使用冒号 `:` 分隔键和值
+- 可以被子组件继承和覆盖
+- 一般用于定义组件的静态配置
+
+### 实例属性（Instance Properties）
+
+使用等号(`=`)定义，通常用于定义可变或动态的属性：
+
+```rust
+Container = {{View}} {
+    // 实例属性示例
+    Button1 = <Button> {  // 创建 Button 实例
+        width: 100,
+        label: "Click me"
+    }
+
+    Panel = <View> {     // 创建 View 实例
+        flow: Down,
+        Button2 = <Button> {
+            width: 200
+        }
+    }
+}
+```
+实例属性的特点:
+
+- 用于创建子组件实例
+- 使用等号 `=` 分隔
+- 通常与 `<ComponentType>` 语法一起使用
+- 可以嵌套定义形成组件树
+- 实例会在运行时创建为实际的组件对象
+- 用于构建组件的层级结构
+
+### 二者关系
+
+两者搭配，来创建组件。
+
+```rust
+MyComponent = {{Component}} {
+    // 字段属性 - 定义组件本身的属性
+    width: Fill,
+    color: #f00,
+
+    // 实例属性 - 创建子组件
+    Header = <View> {
+        height: 50
+    }
+
+    Content = <View> {
+        // 字段属性
+        flow: Down,
+        spacing: 10,
+
+        // 嵌套实例属性
+        button1 = <Button> {
+            label: "OK"
+        }
+        button2 = <Button> {
+            label: "Cancel"
+        }
+    }
+}
+
+// 字段属性会映射到结构体字段
+#[derive(Live)]
+pub struct Component {
+    #[live] pub width: Size,    // 对应 width: Fill
+    #[live] pub color: Vec4,    // 对应 color: #f00
+}
+
+// 实例属性会创建新的组件实例
+impl Widget for Component {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // 可以通过 button() 访问子实例
+        let button = self.button(id!(button1));
+        button.handle_event(cx, event);
+    }
+}
+```
+
+**关键区别**:
+
+- 字段属性(`:`)定义组件的属性和配置
+- 实例属性(`=`)创建组件的实例和层级结构
+- 字段属性映射到 Rust 结构体字段
+- 实例属性创建实际的组件对象
+- 字段属性可继承，实例属性形成新的组件树节点
+
+实例属性在运行时会创建实际的组件对象，可以通过模板 ID 来查找和访问。而字段属性会直接影响组件自身的属性值。
+
+理解这两种属性的区别和用途对于正确使用 Live DSL 构建界面非常重要。
+
+字段属性用于配置，实例属性用于组织组件结构。

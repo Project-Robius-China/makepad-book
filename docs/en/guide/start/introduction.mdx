@@ -1,0 +1,107 @@
+# Introduction
+
+> Website：[https://makepad.nl/](https://makepad.nl/)
+>
+> Github Repo：[https://github.com/makepad/makepad](https://github.com/makepad/makepad)
+>
+> 🚧 Currently the more active branch is `rik`, it is recommended that you check based on the `rik` branch to get the latest `makepad` support.
+
+Makepad is an in-development shader based live designable OSS UI-Framework
+
+## Makepad Book Introduction
+
+The Book of Makepad, aimed at Makepad application developers and contributors, systematically introduces various aspects of the Rust cross-platform Makepad UI framework.
+
+## Makepad Introduction
+
+The ultimate vision of Makepad is to build a livecoding/design hybrid IDE. Similar to how tools like Visual Basic or Delphi once unified developers and designers, Makepad, implemented in Rust, offers functionalities akin to design tools like Figma.
+
+The demo showcased in the video below demonstrates this vision.
+
+<iframe style={{width: "100%", height: 500}} src="//player.bilibili.com/player.html?isOutside=true&aid=1706295249&bvid=BV1QT421k7ej&cid=1623232698&p=1"></iframe>
+
+Online Demo:[https://makepad.dev/](https://makepad.dev/)
+
+As seen in the video: the code, 3D tree, and design icons can all be linked in real-time, and the video ends with an impressive code collapse animation.
+
+To achieve this vision, `Makepad` needs to provide two main components:
+
+- [Makepad Framework](/guide/start/makepad-framework)
+- [Makepad Studio](/guide/start/makepad-studio)
+
+## Advantages
+
+### Performance Matters
+
+- Software should be a joy to use
+
+    When developers focus on their expertise, quality improves. And Makepad's design-editor will let designers themselves bring UIs to the next level.
+
+- App downloads should be fast
+
+    Filesize matters for products that also run on the web. Makepad projects are tiny. Check out our [pre-alpha IDE](http://www.makepad.dev/) live on the web.
+
+- Work should be done only once
+
+    Writing cross platform specific code is time consuming. Makepad projects share identical code across web and native.
+
+### Better Workflows Lead to Better Products
+
+- Mockups should be a thing of the past
+
+    When developers focus on their expertise, quality improves. And Makepad's design-editor will let designers themselves bring UIs to the next level.
+
+- Workflows should be streamlined
+
+    The thrill of actualizing a fantastic idea deserves safeguarding. Makepad's roadblock-free development experience safeguards motivation.
+
+- Development should be interruption-free
+
+    Rapid compile times preserve mental flow. Makepad proves that Rust can compile stunningly fast — and its live design system is even instantaneous.
+
+## Advantages and Disadvantages of Makepad's Technology Stack
+
+### Rust
+
+- Advantages
+
+    Rust offers many advantages, such as high performance, safety, a strong type system, predictable runtime, a robust package manager, seamless ABI compatibility with C, and a single compiler maintained officially (no need to consider multiple compilers like in C/C++), These are reasons for choosing Rust.
+
+- Disadvantages
+
+    However, developing applications in Rust is relatively more challenging compared to languages with garbage collection like C#, Java, Kotlin, or JavaScript, and the developer user base is relatively smaller. Additionally, the ecosystem for UI in Rust is still not mature, which poses challenges for adopting Rust.
+
+### Use Shaders to Render UI Styles
+
+- Advantages
+
+    Makepad uses shaders to render UI styles due to their high performance and powerful functionality.
+
+- Disadvantages
+
+    - However, there are significant drawbacks: high power consumption, especially when the screen area is large. 
+    - The shader language also adds a learning burden, and shader compilation times can be slow.
+
+### Hybrid Immediate Mode
+
+- Advantages
+
+    - Update the UI when data changes is very simple from a coding perspective.
+    - Layouts are also simpler.
+
+- Disadvantages
+
+    - It's a different paradigm than Swfit/ Flutter / React and requires a learning cost.
+    - The layout model is also unlike Flexbox or Flutter's model, but it is extensible.
+
+
+### Render Stack
+
+- Advantages
+
+    Utilizes the GPU to accelerate the UI, making it easy to integrate design capabilities into the system.
+
+- Disadvantages
+
+    The downside is that font rendering needs to be redone, requiring loading of TTF files, and it increases the package size for web/mobile devices. It is difficult to integrate with systems that only provide high-level rendering structures (such as HTML or native UI toolkits) for native functionality and accessibility (an advantage of React Native). Bridging more and more native APIs to Rust/Makepad is a significant task.
+

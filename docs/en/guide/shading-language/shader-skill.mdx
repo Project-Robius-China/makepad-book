@@ -1,0 +1,179 @@
+# 着色技巧详解
+
+## 颜色与渐变
+
+在深入了解着色器中的颜色处理之前，让我们先建立对颜色在计算机图形学中的基本认知
+
+### 基本颜色表示
+
+在 Makepad 着色器中，我们使用 `vec4` (RGBA向量) 来表示颜色：
+
+- Red (红色): `0.0` 到 `1.0`
+- Green (绿色): `0.0` 到 `1.0`
+- Blue (蓝色): `0.0` 到 `1.0`
+- Alpha (透明度): `0.0`(完全透明)到 `1.0`(完全不透明)
+
+```rust
+// 基础纯色着色器
+fn pixel(self) -> vec4 {
+    // 格式: vec4(红, 绿, 蓝, 透明度)
+    return vec4(1.0, 0.0, 0.0, 1.0); // 纯红色
+}
+```
+
+### 线性渐变
+
+线性渐变是在两种颜色之间创建平滑过渡的技术。以下是一个水平渐变的实现：
+
+```rust
+fn pixel(self) -> vec4 {
+    // self.pos.x 给出从0.0到1.0的水平位置
+    let mix_factor = self.pos.x;
+
+    let color1 = vec4(1.0, 0.0, 0.0, 1.0); // 红色
+    let color2 = vec4(0.0, 0.0, 1.0, 1.0); // 蓝色
+
+    // 在两种颜色之间线性插值
+    return mix(color1, color2, mix_factor);
+}
+```
+视觉表现如下：
+
+```plaintext
+红色 [================>] 蓝色
+        <- 混合因子 ->
+```
+
+对于对角线渐变，我们可以这样实现：
+
+```rust
+fn pixel(self) -> vec4 {
+    // 组合x和y坐标实现对角线方向
+    let mix_factor = (self.pos.x + self.pos.y) * 0.5;
+
+    let color1 = vec4(1.0, 0.0, 0.0, 1.0); // 红色
+    let color2 = vec4(0.0, 0.0, 1.0, 1.0); // 蓝色
+
+    return mix(color1, color2, mix_factor);
+}
+```
+### 径向渐变
+
+径向渐变创建从中心点向外扩散的圆形颜色过渡：
+
+```rust
+fn pixel(self) -> vec4 {
+    // 计算到中心点的距离
+    let center = vec2(0.5, 0.5);
+    let dist = length(self.pos - center);
+
+    // 将距离转换为混合因子
+    let mix_factor = clamp(dist * 2.0, 0.0, 1.0);
+
+    let inner_color = vec4(1.0, 1.0, 1.0, 1.0); // 中心白色
+    let outer_color = vec4(0.0, 0.0, 0.0, 1.0); // 边缘黑色
+
+    return mix(inner_color, outer_color, mix_factor);
+}
+```
+## 纹理映射
+
+纹理映射是将 2D 图像应用到几何图形表面的技术。
+
+### 基础纹理采样
+
+```rust
+DrawTexture = {{DrawTexture}} {
+    texture tex: texture2d // 声明纹理uniform
+
+    fn pixel(self) -> vec4 {
+        // 在当前位置采样纹理
+        return sample2d(self.tex, self.pos);
+    }
+}
+```
+### UV坐标系统
+
+UV坐标用于将纹理像素映射到几何体：
+
+```plaintext
+(0,0) +-----------+ (1,0)
+      |           |
+      |   纹理     |
+      |           |
+(0,1) +-----------+ (1,1)
+```
+
+```rust
+fn vertex(self) -> vec4 {
+    // 转换UV坐标
+    self.uv = self.geom_pos * self.tex_scale + self.tex_offset;
+
+    // 常规顶点变换
+    let clip_pos = self.geom_pos * self.rect_size + self.rect_pos;
+    return self.camera_projection * vec4(clip_pos, 0.0, 1.0);
+}
+
+fn pixel(self) -> vec4 {
+    // 使用变换后的UV采样
+    return sample2d(self.tex, self.uv);
+}
+```
+
+## 特效处理
+
+### 高斯模糊
+
+下面是一个简单的高斯模糊实现：
+
+```rust
+fn blur(self) -> vec4 {
+    let blur_radius = 2.0; // 模糊半径
+    let mut color = vec4(0.0);
+    let mut total_weight = 0.0;
+
+    // 在当前像素周围的5x5网格中采样
+    for i in -2..3 {
+        for j in -2..3 {
+            let offset = vec2(float(i), float(j)) * blur_radius;
+            // 计算高斯权重
+            let weight = exp(-(offset.x * offset.x + offset.y * offset.y));
+
+            color += sample2d(self.tex, self.pos + offset) * weight;
+            total_weight += weight;
+        }
+    }
+
+    return color / total_weight; // 归一化结果
+}
+```
+### 发光效果
+
+```rust
+fn glow(self) -> vec4 {
+    let base_color = sample2d(self.tex, self.pos); // 原始颜色
+    let blur_color = self.blur(); // 模糊后的颜色
+
+    // 将模糊版本叠加以创建发光效果
+    return base_color + blur_color * self.glow_strength;
+}
+```
+### 阴影效果
+
+```rust
+// 使用Makepad内置的GaussShadow来实现阴影效果
+fn draw_shadow(self) -> vec4 {
+    let shadow_color = vec4(0.0, 0.0, 0.0, 0.5);
+    let shadow_offset = vec2(5.0, 5.0);
+
+    // 计算阴影区域
+    let shadow = GaussShadow::box_shadow(
+        self.rect_pos + shadow_offset,
+        self.rect_size,
+        self.pos,
+        10.0 // 阴影模糊半径
+    );
+
+    return shadow_color * shadow;
+}
+```

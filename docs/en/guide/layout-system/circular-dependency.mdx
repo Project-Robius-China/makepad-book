@@ -1,0 +1,187 @@
+# 布局中产生的循环依赖问题
+
+## 布局循环依赖
+
+布局循环依赖是指在组件布局计算过程中出现的相互依赖关系，导致布局引擎无法确定最终尺寸的情况。这通常发生在以下场景：
+
+1. 父子组件的尺寸相互依赖
+2. 兄弟组件之间的尺寸相互依赖
+3. 复杂的 Fit 布局嵌套
+
+让我们通过具体示例来理解这些情况：
+
+### 父子循环依赖
+
+```rust
+// 错误示例：父子循环依赖
+ParentView = <View> {
+    walk: {
+        width: Fill,
+        height: Fit  // 父组件高度依赖子组件
+    },
+    layout: {
+        flow: Down
+    },
+
+    <ChildView> {
+        walk: {
+            width: Fill,
+            height: Percentage(0.5)  // 子组件高度依赖父组件
+        }
+    }
+}
+```
+在这个例子中：
+
+1. 父组件的高度设置为 `Fit`，需要等待子组件高度计算完成
+2. 子组件高度设置为父组件的 50%，需要等待父组件高度计算完成
+3. 形成循环：父组件等待子组件，子组件等待父组件
+
+图示父子循环依赖：
+
+```plaintext
+┌─ Parent (height: Fit) ─┐
+│     ?                  │
+│  ┌─ Child ─┐           │
+│  │  height:│           │
+│  │  50%    │   ?       │
+│  │  of ?   │           │
+│  └─────────┘           │
+└────────────────────────┘
+```
+
+### 兄弟组件循环依赖
+
+```rust
+// 错误示例：兄弟组件循环依赖
+Container = <View> {
+    layout: {
+        flow: Right
+    },
+
+    <LeftView> {
+        walk: {
+            width: Fill,  // 左侧组件填充剩余空间
+            height: Fit
+        }
+    }
+
+    <RightView> {
+        walk: {
+            width: Fit,   // 右侧组件宽度自适应
+            height: Fit
+        },
+        layout: {
+            flow: Down
+        }
+    }
+}
+
+```
+
+这个例子中：
+
+1. 左侧组件想要填充除右侧组件外的空间
+2. 右侧组件的宽度又依赖于其内容
+3. 布局引擎无法确定先计算哪个组件的尺寸
+
+## 如何避免布局循环依赖
+
+### 1. 明确尺寸约束
+
+最安全的方式是为关键尺寸提供明确的约束：
+
+```rust
+// 正确示例：明确尺寸约束
+ParentView = <View> {
+    walk: {
+        width: Fill,
+        height: Fixed(500)  // 明确父组件高度
+    },
+
+    <ChildView> {
+        walk: {
+            width: Fill,
+            height: Percentage(0.5)  // 现在可以正确计算
+        }
+    }
+}
+```
+
+### 2. 使用 Fixed 或 Max/Min 约束
+
+```rust
+Container = <View> {
+    layout: {
+        flow: Right
+    },
+
+    <LeftView> {
+        walk: {
+            width: Percentage(0.7),  // 固定比例
+            height: Fit
+        }
+    }
+
+    <RightView> {
+        walk: {
+            width: Fixed(200),  // 固定宽度
+            height: Fit
+        }
+    }
+}
+```
+
+### 3. Layout 方向性原则
+
+建立正确的布局方向可以避免许多循环依赖：
+
+```rust
+// 推荐的布局方向
+GoodLayout = <View> {
+    layout: {
+        flow: Down  // 垂直布局更容易推导尺寸
+    },
+
+    <Header> {
+        walk: {
+            width: Fill,
+            height: Fixed(60)  // 固定高度头部
+        }
+    }
+
+    <Content> {
+        walk: {
+            width: Fill,
+            height: Fill  // 填充剩余空间
+        }
+    }
+
+    <Footer> {
+        walk: {
+            width: Fill,
+            height: Fit  // 底部高度自适应
+        }
+    }
+}
+```
+
+## 当遇到潜在循环依赖时布局引擎的解决策略
+
+当布局引擎检测到潜在的循环依赖时，会采取以下策略：
+
+### 1. 优先级顺序
+
+- Fixed 尺寸最优先计算
+- Fill 其次
+- Fit 最后计算
+
+### 2. 断开循环
+
+- 对于无法解决的循环，使用默认值或最小值
+- 在开发模式下发出警告
+
+### 3. 缓存机制
+
+- 缓存已计算的布局结果
+- 避免重复计算相同的布局

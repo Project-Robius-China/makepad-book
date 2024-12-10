@@ -1,0 +1,242 @@
+# Live DSL 建议编码规范
+
+## 命名规范
+
+### 组件类型命名
+
+- 使用 PascalCase(大驼峰)命名组件类型
+- 以功能性名词命名，表明语义
+
+```rust
+// Good
+Button = {{Button}} { }
+DropDownList = {{DropDownList}} { }
+ScrollView = {{ScrollView}} { }
+
+// Bad
+button = {{button}} { }
+dropdownlist = {{dropdownlist}} { }
+scroll_view = {{scroll_view}} { }
+```
+### 实例属性命名
+
+- 当实例是可复用、需要引用的UI组件时,使用 PascalCase
+- 当实例是布局容器或装饰性元素时,使用 snake_case
+
+```rust
+Dialog = {{Dialog}} {
+    // 可交互、需要引用的组件用 PascalCase
+    OkButton = <Button> { }
+    CancelButton = <Button> { }
+
+    // 布局容器用 snake_case
+    content_area = <View> {
+        header = <View> { }
+        body = <View> { }
+        footer = <View> { }
+    }
+}
+```
+### 字段属性命名
+
+使用 `snake_case` 命名所有字段属性
+
+```rust
+Button = {{Button}} {
+    // Good
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+
+    // Bad
+    backgroundColor: #fff,
+    BorderWidth: 1.0,
+    cornerRadius: 4.0,
+}
+```
+
+## 缩进和空格
+
+### 缩进
+
+- 使用 4 个空格进行缩进
+- 每个嵌套层级增加一级缩进
+
+```rust
+Container = {{View}} {
+    width: Fill,
+    height: Fill,
+
+    Header = <View> {
+        height: 60,
+
+        Title = <Label> {
+            text: "Hello"
+        }
+    }
+}
+```
+
+### 空格和换行
+
+- 属性冒号后加一个空格
+- 大括号前后各加一个空格
+- 实例定义之间用空行分隔
+- 相关的字段属性可以组合在一起
+
+```rust
+Container = {{View}} {
+    // 布局相关属性组合在一起
+    width: Fill,
+    height: Fill,
+    flow: Down,
+    spacing: 10,
+
+    // 视觉相关属性组合在一起
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+
+    // 子实例之间空行分隔
+    Header = <View> {
+        height: 60
+    }
+
+    Content = <View> {
+        flow: Down
+    }
+
+    Footer = <View> {
+        height: 40
+    }
+}
+```
+
+
+## 属性排序
+
+建议按以下顺序组织属性:
+
+1. 布局属性(width, height, margin等)
+2. 视觉属性(color, border等)
+3. 行为属性(cursor, grab_key_focus等)
+4. 动画属性(animator)
+5. 子组件实例
+
+```rust
+Button = {{Button}} {
+    // 1. 布局属性
+    width: 100,
+    height: 40,
+    margin: {left: 10, right: 10},
+
+    // 2. 视觉属性
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+
+    // 3. 行为属性
+    cursor: Pointer,
+    grab_key_focus: true,
+
+    // 4. 动画属性
+    animator: {
+        hover = {
+            default: off
+        }
+    },
+
+    // 5. 子组件实例
+    Icon = <Icon> { },
+
+    Label = <Label> { }
+}
+```
+
+## 组件结构
+
+### 基础组件定义
+
+- 基础组件使用双大括号语法
+- 组件名和实现需一致
+
+```rust
+// 基础组件定义
+Button = {{Button}} { }
+Label = {{Label}} { }
+```
+
+### 组件继承和组合
+
+- 继承使用尖括号语法
+- 组合使用实例属性
+
+```rust
+// 继承
+PrimaryButton = <Button> {
+    background_color: #2196f3
+}
+
+// 组合
+CardView = {{View}} {
+    header = <View> { }
+    content = <View> { }
+}
+```
+
+## 注释规范
+
+### 组件注释
+
+- 在组件定义前添加说明性注释
+- 说明组件的用途和重要属性
+
+```rust
+// 主要操作按钮
+// 支持 size: small | medium | large
+// 支持 variant: contained | outlined | text
+PrimaryButton = <Button> {
+    background_color: #2196f3
+}
+```
+### 分组注释
+
+- 使用注释对相关属性进行分组
+
+```rust
+Dialog = {{Dialog}} {
+    // -------- Layout --------
+    width: 400,
+    height: 300,
+
+    // -------- Visual --------
+    background_color: #fff,
+    shadow_color: #0007,
+
+    // -------- Components --------
+    Header = <View> { }
+    Content = <View> { }
+}
+```
+
+## 模式和最佳实践
+
+### 可复用组件
+
+- 抽取可复用的样式和布局为单独的组件
+- 使用继承扩展基础组件
+
+```rust
+// 基础卡片组件
+Card = {{View}} {
+    background_color: #fff,
+    corner_radius: 4.0,
+    shadow_color: #0007
+}
+
+// 特定用途的卡片
+ProductCard = <Card> {
+    width: 200,
+    height: 300
+}
+```

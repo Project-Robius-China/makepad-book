@@ -1,0 +1,129 @@
+# 绘制基础图形
+
+## 几何图元与变换
+
+在开始绘制复杂图形之前，我们需要先理解最基本的构建块。在计算机图形学中，所有复杂的形状最终都是由基本图元构建而成的。
+
+让我们从最基础的图元开始：
+
+### 基本图元类型
+
+```rust
+// 1. 点
+fn draw_point(self) -> vec4 {
+    let point_size = 5.0;
+    // 在 pixel shader 中我们需要判断是否在点的范围内
+    let distance = length(self.pos - vec2(0.5));
+    return vec4(1.0, 0.0, 0.0, step(distance, point_size));
+}
+
+// 2. 线段
+fn draw_line(self) -> vec4 {
+    let line_width = 2.0;
+    let p1 = vec2(0.0, 0.0);
+    let p2 = vec2(1.0, 1.0);
+    // 计算点到线的距离
+    let dist = distance_to_line(self.pos, p1, p2);
+    return vec4(0.0, 1.0, 0.0, step(dist, line_width));
+}
+
+// 3. 三角形
+fn draw_triangle(self) -> vec4 {
+    let vertices = [
+        vec2(0.0, 0.0),
+        vec2(1.0, 0.0),
+        vec2(0.5, 1.0)
+    ];
+    // 判断点是否在三角形内
+    let inside = point_in_triangle(self.pos, vertices);
+    return vec4(0.0, 0.0, 1.0, inside);
+}
+```
+视觉表示：
+
+```plaintext
+点       线段             三角形
+
+●         ●               ▲
+         ╱               / ╲
+        ●               /   ╲
+                       ▔▔▔▔▔▔▔
+
+```
+### 坐标变换
+
+你会需要对这些图形进行各种操作：移动物体的位置、旋转物体的角度、改变物体的大小。这个时候就需要使用变换矩阵，一种用数学方式来精确描述这些操作的工具。
+
+理解变换矩阵是处理图形的基础。主要有三种基本变换：
+
+
+1. 平移变换
+
+```rust
+fn translate(pos: vec2, offset: vec2) -> vec2 {
+    // 简单的向量加法
+    return pos + offset;
+}
+```
+
+2. 旋转变换
+
+```rust
+fn rotate(pos: vec2, angle: float) -> vec2 {
+    let s = sin(angle);
+    let c = cos(angle);
+    return vec2(
+        pos.x * c - pos.y * s,
+        pos.x * s + pos.y * c
+    );
+}
+```
+
+3. 缩放变换
+
+```rust
+fn scale(pos: vec2, scale: vec2) -> vec2 {
+    // 分量乘法
+    return pos * scale;
+}
+```
+
+## 距离场技术
+
+距离场（Distance Field）是 Makepad 中实现高质量图形渲染的核心技术。让我们深入理解它：
+
+### 什么是距离场？
+
+距离场是一个函数，它告诉我们空间中任意一点到形状边界的最短距离：
+
+- 形状内部的点距离为负
+- 形状边界上的点距离为零
+- 形状外部的点距离为正
+
+```rust
+fn circle_sdf(pos: vec2, center: vec2, radius: float) -> float {
+    // 计算到圆心的距离，减去半径
+    return length(pos - center) - radius;
+}
+```
+
+把距离场想象成一堆不太透明的圆是很有用的。这个距离场中，表示纯白色的区域(也就是数值为1的部分)就在对象上。纯黑色部分，就是距离物体最远的点。中间的灰色部分，数值在0-1之间。这是一种可视化0到1之间距离的方法。
+
+图片
+
+**有号距离场 (Signed Distance Field, SDF)** 是一个三维标量场，其中每个点的值表示从该点到最近表面的距离。这些距离值具有“有号”的特性：
+
+- **正值**：点位于物体的外部，距离物体表面最近的距离。
+- **负值**：点位于物体的内部，负数值表示点到物体表面的距离。
+- **零值**：点恰好位于物体表面。
+
+通过这种方式，SDF不仅能够提供从任意点到物体表面的最近距离，还能够区分点在物体内部还是外部。
+
+### 使用有符号距离场绘制形状
+
+**有符号距离场 (SDF)** 基于以下几个关键概念：
+
+- **体素 (Voxel)**：3D空间中的一个小立方体单元，用于分割整个3D空间。在SDF中，我们计算每个体素到物体表面的最短距离。
+- **距离场 (Distance Field)**：一个场，其中每个点的值表示到物体表面的最短距离。一个距离场可以是有号（Signed）或无号（Unsigned）的。
+- **三线性插值 (Trilinear Interpolation)**：用于在3D空间中的一个体素网格上估计任意点的SDF值的方法。三线性插值通过对体素点的邻近值进行线性插值来计算。
+

@@ -1,0 +1,37 @@
+[
+    {
+        "type": "dir",
+        "name": "start",
+        "label": "Quick Start"
+    },
+    {
+        "type": "dir",
+        "name": "widget",
+        "label": "Widget"
+    },
+    {
+        "type": "dir",
+        "name": "live-DSL",
+        "label": "Live DSL"
+    },
+    {
+        "type": "dir",
+        "name": "layout-system",
+        "label": "Layout System"
+    },
+    {
+        "type": "dir",
+        "name": "animation-system",
+        "label": "Animation System"
+    },
+    {
+        "type": "dir",
+        "name": "shading-language",
+        "label": "Shading Language"
+    },
+    {
+        "type": "dir",
+        "name": "appendix",
+        "label": "Appendix"
+    }
+]

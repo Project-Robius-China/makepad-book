@@ -1,0 +1,662 @@
+# Widget 基础
+
+通常，一个应用是由多个组件构成的，这些组件包括了多个窗口、按钮、输入框、标签等控件，或者是由这些控件组成的子组件。
+
+组件（Component），广义来说，是一种封装了特定功能的模块化单元，通常包含逻辑和视图的定义。
+
+组件可以由多个控件（Widget）组成，也可以是其他组件的子组件。它们通常具有独立的生命周期。
+
+组件具有如下特点：
+
+- **模块化**：组件是构建用户界面的模块化单元，易于重用和维护。
+- **封装性**：组件封装了自己的逻辑和视图，减少了与其他组件之间的耦合。
+- **组合性**：组件可以嵌套其他组件，从而构建复杂的界面。
+
+Makepad Widget 作为 Makepad 框架的一部分，由 makepad-widgets 库预置了 Makepad 框架的一些基本 UI 控件，如按钮、标签、输入框等。
+
+这些控件旨在简化 UI 的构建和管理，使开发者能够快速创建复杂的 UI 组件。
+
+本章不会对 makepad-widgets 库中的所有控件进行一一讲解（这部分内容将在后续应用实践中逐步展开），而是对其共性和公共特点进行描述，让你对  makepad UI 控件的基本工作机制建立一个整体的心智模型，以便更好地应用它们。
+
+:::info Widget 与 Compont 的主要区别
+
+**Widget:**
+
+- 基础 UI 构建块
+- 直接处理事件和绘制
+- 关注基础 UI 能力
+
+**Component:**
+
+- Widget 的组合
+- 更高层的抽象
+- 关注业务逻辑
+- 组合已有 Widget
+- 重用性更强
+
+:::
+
+## 声明式 UI 构建自定义组件
+
+我们先以一个自定义的组件示例开始逐步了解这些内置控件。这个示例来自于 makepad 中的 simple 示例，但是本章会对其略微修改。该示例的最终效果如视频所示：
+
+<iframe style={{width: "100%", height: 500}} src="//player.bilibili.com/player.html?isOutside=true&aid=1706295249&bvid=BV1QT421k7ej&cid=1623232698&p=1"></iframe>
+
+1. 该窗口有三个控件：Button / Lable / TextInput ，每点击一次按钮时，输入框的数字加一。
+2. 该窗口背景是彩色的，并跟随鼠标滑动而变化。
+
+
+首先，使用 cargo new simple 来创建一个 crate。
+
+```bash
+cargo new simple
+```
+
+在 Cargo.toml 中引入 makepad-widgets 库的依赖。
+
+```toml
+[dependencies]
+# 使用了 rik 分支，因为这个分支比较活跃。
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+```
+
+然后请在 src 下创建 lib.rs  和 app.rs 文件。此时你的目录结构如下：
+
+```plaintext
+simple/
+├── Cargo.lock
+├── Cargo.toml
+├── src
+│   ├── app.rs
+│   ├── lib.rs
+│   └── main.rs
+
+```
+
+在 `lib.rs` 中添加如下代码：
+
+```rust
+pub mod app;
+```
+
+然后我们在 app.rs 模块中完善我们的代码。
+
+一个基本的 App 就是一个组件，我们该如何定义它呢？先来定义整个组件结构。
+
+```rust
+
+use makepad_widgets::*; // 导入 Makepad Widgets 包
+
+// 定义 live_design 宏，用于声明 UI 组件和布局
+live_design! {
+	App = {{App}} {
+        // 定义 UI 树的根节点
+        ui: <Root>{
+            // TODO
+        }
+	}
+}
+
+// 定义应用程序入口
+app_main!(App);
+
+// 定义 App 结构体，包含 UI 和计数器
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI 组件引用
+    #[rust]
+    counter: usize, // 计数器
+}
+
+// 实现 LiveRegister trait，用于注册 live desin
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        // 注册 Makepad Widgets 的 live design
+        makepad_widgets::live_design(cx);
+    }
+}
+
+// 实现 AppMain 特性，用于处理事件
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // 匹配事件并处理
+        self.match_event(cx, event);
+        // 处理 UI 事件
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+
+```
+
+代码结构说明如下：
+
+1. `live_design!` 宏用于声明 UI 组件和布局。它是我们之前说过的 Live 系统，利用 Rust 宏实现的 Live DSL。以便于在运行时实现对 UI 界面的更改。
+2. `app_main!(App)` ，这个宏定义了应用程序的入口。因为 makepad 要支持跨平台（包括 Web /iOS/Android/ MacOS/Windows/Linux）应用， `app_main!` 宏内部包括了支持各个平台的相关入口代码。所以这里用宏，而非简单的 `main` 函数。
+3. Rust 结构体 `App` 使用了 `derive(Live,LiveHook)` 派生宏，自动为 `App` 实现了两个 Live 系统相关的 trait :  `Live` 和 `LiveHook` 。
+    - 其中字段 `ui` 为 `WidgetRef` 类型，实际可以看作是 `dyn Widget` ，即实现了 `Widget` trait 的 UI 控件。这些控件同样可以运行时更新，就用 `#[live]`  属性标识，该属性会自动为该字段实现一些派生宏，比如为字段创建 `LiveId` ，调用 `LiveHook` 方法等。
+    - `counter` 字段则属于业务逻辑字段，是为了计数，所以这里用 `#[rust]` 属性标识，告诉 Live 系统，这属于 Rust 范畴而非 UI 控件 ，不参与运行时更新。
+    - `Live` 和 `LiveHook` trait 与 Makepad 控件的 Live 生命周期相关，我们在后面详细介绍。
+4. `LiveRegister` trait 则是用于把 `App` 注册到 Live 系统。
+5. `AppMain` trait 定义了 `handle_event` 方法，它用于给 UI 树传递各种事件，包括鼠标、定时器或滑动事件等。
+    1. 该 trait 对象实际会在 `app_main!` 中被调用。所以它也是程序入口的一部分。
+    2. 内部调用 `ui` 的 `handle_event` 传入的参数 `cx`  / `event`  分别是上下文信息和事件，而 `Scope` 则是用于组件共享状态，当前 `Scope::empty()`  代表没有共享状态。
+
+让我们先继续完成这个 App 组件，稍后再深入其背后机制。
+
+Makepad 是声明式 UI 框架，这意味着，只需要声明用户想要的 UI 样式，框架会自动更新 UI 的变化。
+
+```rust
+live_design! {
+    // 导入 Makepad theme 和 shaders, 以及 widgets
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    // 定义 App 组件
+    App = {{App}} {
+        // 定义 UI 树的根节点
+        ui: <Root>{
+            // 定义主窗口
+            main_window = <Window>{
+                // 显示背景
+                show_bg: true
+                width: Fill,
+                height: Fill
+
+
+                // 定义自定义背景绘制
+                draw_bg: {
+                    fn pixel(self) -> vec4 {
+                        // 获取几何位置
+                        let st = vec2(
+                            self.geom_pos.x,
+                            self.geom_pos.y
+                        );
+
+                        // 计算颜色，基于 x 和 y 位置及时间
+                        let color = vec3(st.x, st.y, abs(sin(self.time)));
+                        return vec4(color, 1.0);
+                    }
+								}
+                // 定义窗口主体
+                body = <ScrollXYView>{
+                    // 布局方向为垂直
+                    flow: Down,
+                    // 子项间距为10
+                    spacing:10,
+                    // 对齐方式
+                    align: {
+                        x: 0.5,
+                        y: 0.5
+                    },
+                    // 按钮组件
+                    button1 = <Button> {
+                        text: "Hello world"
+                        draw_text:{color:#f00} // 文字颜色为红色
+                    }
+
+
+                    // 文本输入组件
+                    label1 = <Label> {
+                        draw_text: {
+                            color: #f // 文字颜色为白色
+                        },
+                        text: "Click to count "
+                    }
+
+                    // 文本输入组件
+                    input1 = <TextInput> {
+                        width: 100, height: 30
+                        text: "Counter: 0 "
+                    }
+                }
+            }
+        }
+    }
+}
+```
+makepad 通过在 `live_design!` 宏内部使用 `Live DSL` 语言来声明 UI 样式。
+
+### 基本组件和主题
+
+```rust
+use link::theme::*;
+use link::shaders::*;
+use link::widgets::*;
+```
+这两组 `use` 导入语句，用于导入基础组件和默认主题。注意，这里 `use` 关键字是 Live DSL 专用，它一般用于导入其他模块内由 live_design!  定义的Live 脚本。
+
+### 定义App组件
+
+```rust
+// 定义 App 结构体，包含 UI 和计数器
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI 组件引用
+    #[rust]
+    counter: usize, // 计数器
+}
+
+live_design! {
+    App = {{App}} {
+        // 定义 UI 树的根节点
+        ui: <Root>{
+            ...
+        }
+    }
+}
+```
+
+`App` 组件在 live_design! 中由 App = `{{App}}` 这样的语法来定义。这里是创建了一个 App 组件实例，而 `{{App}}` 里面的 App 则对应 Rust 定义的 App 结构体。 
+
+`App` 结构体有两个字段 `ui` 和 `counter` ，其中 `ui` 是表示 UI 组件，所以用` #[live]` 属性标注，而 `counter` 是非 UI 字段，所以用 `#[rust]` 属性标注。
+
+在 `live_design!` DSL 宏中，` ui: <Root> { ... }`表示 UI 组件使用 Root 根节点。
+
+### Root 组件
+
+Root 组件在 Makepad 中扮演着重要的角色，主要负责管理和协调多个子组件。
+
+```rust
+live_design!{
+    RootBase = {{Root}} {}
+}
+
+#[derive(Live, LiveRegisterWidget, WidgetRef)]
+pub struct Root {
+		// 跟踪当前正在绘制状态
+    #[rust] draw_state: DrawStateWrap<DrawState>,
+    // 这是一个 ComponentMap<LiveId, WidgetRef>，用于存储和管理多个窗口
+    // 每个窗口都是一个 Widget，通过 LiveId 进行标识
+    #[rust] windows: ComponentMap<LiveId, WidgetRef>,
+}
+...
+```
+
+该组件通过 LiveId 和 WidgetRef 来管理多个 windows ，并且能跟踪当前绘制状态。
+
+
+### 渲染机制
+
+Makepad Widget 采用即时模式（immediate mode）和保留模式（retained mode）相结合的混合模式（Hybird）方式，提供了高度灵活性和性能优化。
+
+- 保留模式是指保存UI元素的状态和结构，只在需要时进行更新，适合静态或变化不太频繁的 UI 元素。
+- 即时模式则是每帧重新计算和绘制 UI 元素，提供了更大的灵活性和易于实现动态 UI，适合频繁变化的 UI 元素。
+
+Makepad 采用混合模式，保留了渲染 UI 树的结构状态，平衡性能和灵活性。遍历所有需要更新的窗口和组件，对于即时模式部分，重新计算和绘制，对于保留模式部分，检查是否需要更新，仅更新变化的部分。
+
+Root 组件就是保留模式和即时模式混合的一个组件。
+
+### Window 组件
+
+```rust
+// 定义 App 组件
+App = {{App}} {
+    // 定义 UI 树的根节点
+    ui: <Root>{
+        // 定义主窗口
+        main_window = <Window>{
+            // 显示背景
+            show_bg: true
+            width: Fill,
+            height: Fill
+
+
+            // 定义自定义背景绘制
+            draw_bg: {
+                fn pixel(self) -> vec4 {
+                    ...
+                }
+                            }
+            // 定义窗口主体
+            body = <ScrollXYView>{
+                // 布局方向为垂直
+                flow: Down,
+                // 子项间距为10
+                spacing:10,
+                // 对齐方式
+                align: {
+                    x: 0.5,
+                    y: 0.5
+                },
+                // 按钮组件
+                button1 = <Button> {
+                    text: "Hello world"
+                    draw_text:{color:#f00} // 文字颜色为红色
+                }
+
+
+                // 文本输入组件
+                label1 = <Label> {
+                    draw_text: {
+                        color: #f // 文字颜色为白色
+                    },
+                    text: "Click to count "
+                }
+
+                // 文本输入组件
+                input1 = <TextInput> {
+                    width: 100, height: 30
+                    text: "Counter: 0 "
+                }
+            }
+        }
+    }
+}
+```
+在 `Root` 组件内部，我们定义了 `main_window` 主窗口组件 `<Window>` 实例。
+
+同样，该 `<Window>` 组件对应于定义在 `widgets/window.rs` 中的 Rust 结构体 `Window` 。
+
+在 main_window 实例中，声明了一些基本属性： `show_bg` / `width` / `height` ，还有一个特别的属性 `draw_bg` ，该属性特别之处在于以 `draw_` 为前缀，可以跟随一个 代码块（block） 来指定着色脚本，这里是指定了 `fn  pixel(self) -> vec4` 函数来渲染背景色。
+
+另外 `main_window` 实例中还定义了 `body` 组件实例，它对应的是一个滚动视图组件 `<ScrollXYView>` ，同样，该 `body` 实例中定义了该组件的一些基本属性和所包含的组件实例：
+
+- `<Button>` ， 按钮实例
+- `<Label>` ，标签实例
+- `<TextInput>` ，文本输入实例
+
+至此，我们的 Simple UI 声明完毕。接下来，我们要为该 UI 增加指定的业务逻辑。
+
+
+### 增加业务逻辑
+
+我们的 Simple UI 的业务逻辑是：点击按钮时，文本输入框内值会变化，展示增加后的计数，每次点击按钮加一。
+
+```rust
+// 实现 MatchEvent 特性，用于处理事件
+impl MatchEvent for App {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        // 检查按钮是否被点击
+        // 这里可以直接通过 `id!()`使用 button1 实例，获取被点击 Button
+        // `clicked` 是 Button 组件的方法
+        if self.ui.button(id!(button1)).clicked(&actions) {
+            // 增加计数器
+            log!("BUTTON jk {}", self.counter);
+            self.counter += 1;
+            // 更新标签文本
+            // 同样，通过 `id!()` 获取 input1 文本输入实例
+            let input = self.ui.text_input(id!(input1));
+            // 通过文本输入框组件内置的 `set_text_and_redraw`
+            // 更新文本输入框的内容为新的计数器值，并触发即时重绘。
+            input.set_text_and_redraw(cx, &format!("Counter: {}", self.counter));
+        }
+    }
+}
+```
+
+`id!()` 宏是获取传入组件实例的 `LiveId` 。在 makepad 中 Live System 、draw 库 和  Widget 库深度耦合。组件的渲染顺序依赖于 `LiveId` 。后续章节会深入讲解 Live System 相关内容。
+
+为 `App` 实现 `MatchEvent trait` 来实现我们的业务逻辑。该 trait 是在 `makepad-draw/src/match_event.rs` 中被定义的，它是 Makepad 框架中处理各种事件的核心接口。
+
+该 trait 定义了多个事件处理方法，如 `handle_startup`, `handle_shutdown`, `handle_draw` 等。这是将底层平台的各种事件抽象成统一的接口，简化了跨平台开发。
+
+其中 `handle_actions` 方法用于处理多个 action，默认实现是遍历所有 action 并调用 `handle_action`。
+
+在 `MatchEvent` trait 中还定义了 `match_event` 默认实现，它里面会调用 `handle_actions` 方法。
+
+在我们前面定义的 App 入口事件处理方法 handle_event 中调用了该 match_event 方法 :
+
+```rust
+// 实现 AppMain 特性，用于处理事件
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // 匹配事件并处理
+        self.match_event(cx, event);
+        // 处理 UI 事件，本例就是 `<Root>`
+        // 这里调用的是实现 Widget trait 时定义的 handle_event 方法
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+```
+
+这里反映了 Makepad 将应用逻辑和 UI 组件关注点分离的架构决策。应用级别的事件处理（`match event`）通常更高层次和抽象。UI 事件处理更关注具体的组件交互。
+
+## Action
+
+Action 对于 Makepad 来说是一个重要的概念，用于表示用户界面的交互或状态变化。
+
+在 `platform/src/action.rs` 中定义了 Action 的本质。
+
+```rust
+pub trait ActionTrait: 'static  {
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn ref_cast_type_id(&self) -> TypeId where Self: 'static {TypeId::of::<Self>()}
+}
+
+impl<T: 'static + Debug + ?Sized > ActionTrait for T {
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.fmt(f)
+    }
+}
+
+generate_any_trait_api!(ActionTrait);
+
+impl Debug for dyn ActionTrait{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.debug_fmt(f)
+    }
+}
+
+pub type Action = Box<dyn ActionTrait>;
+pub type ActionsBuf = Vec<Action>;
+pub type Actions = [Action];
+
+pub trait ActionCast<T> {
+    fn cast(&self) -> T;
+}
+
+impl Cx{
+    pub fn action(&mut self, action: impl ActionTrait){
+        self.new_actions.push(Box::new(action));
+    }
+
+    pub fn extend_actions(&mut self, actions: ActionsBuf){
+        self.new_actions.extend(actions);
+    }
+
+    pub fn map_actions<F, G, R>(&mut self, f: F, g:G) -> R where
+    F: FnOnce(&mut Cx) -> R,
+    G: FnOnce(&mut Cx, ActionsBuf)->ActionsBuf,
+    {
+        ...
+    }
+
+    pub fn capture_actions<F>(&mut self, f: F) -> ActionsBuf where
+    F: FnOnce(&mut Cx),
+    {
+        ...
+    }
+}
+```
+
+这段代码定义了 Makepad 平台中 Action 的核心结构和行为:
+
+- `ActionTrait` ： 可以被视为 `Any` trait 的一种扩展或自定义版本，为所有实现了 `Debug` trait 的 `'static` 类型自动实现了 `ActionTrait`。`ref_cast_type_id` 方法提供了类似于 `Any::type_id` 的功能。
+- `Action` : 实际上是 `ActionTrait` 的 trait 对象。 `Actions` 则是该 trait 对象的 数组，它是一个动态大小类型，类似于 `[T]`，所以使用的时候用 `&Actions` 。
+- `Cx` : 则是一个跨平台上下文结构体，它抽象了对 `actions` 操作的各种方法，屏蔽了不同平台底层的实现。
+
+在 `widgets/src/widget.rs` 中定义了  `Widget` trait 核心接口，来管理实现 Widget 必须要实现的方法。`WidgetRef` 则是对 `dyn Widget` trait 对象的一个封装。
+
+除此之外，还有  `WidgetActionTrait`  相关的 trait ，它是专门为 Widget 系统设计的 Action 接口，可以看作这是 `ActionTrait`  的一种特化。这样就允许 Widget 在运行时动态选择和执行不同的 WidgetAction 。
+
+```rust
+pub trait WidgetActionTrait: 'static {
+    fn ref_cast_type_id(&self) -> TypeId;
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn box_clone(&self) -> Box<dyn WidgetActionTrait>;
+}
+
+impl<T: 'static + ? Sized + Clone + Debug> WidgetActionTrait for T {
+    fn ref_cast_type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+
+    fn box_clone(&self) -> Box<dyn WidgetActionTrait> {
+        Box::new((*self).clone())
+    }
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.fmt(f)
+    }
+}
+
+impl Debug for dyn WidgetActionTrait{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.debug_fmt(f)
+    }
+}
+
+generate_any_trait_api!(WidgetActionTrait);
+
+impl Clone for Box<dyn WidgetActionTrait> {
+    fn clone(&self) -> Box<dyn WidgetActionTrait> {
+        self.as_ref().box_clone()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WidgetAction {
+    action: Box<dyn WidgetActionTrait>,
+    pub widget_uid: WidgetUid,
+    pub path: HeapLiveIdPath,
+    pub group: Option<WidgetActionGroup>
+}
+
+
+impl WidgetActionsApi for Actions{
+    fn find_widget_action(&self, widget_uid: WidgetUid) -> Option<&WidgetAction>{
+        for action in self{
+            // 这里会将 action 转为 WidgetAction 来处理
+            if let Some(action) = action.downcast_ref::<WidgetAction>(){
+                if action.widget_uid == widget_uid{
+                    return Some(action)
+                }
+            }
+        }
+        None
+    }
+}
+
+```
+
+因为 `WidgetAction` 也默认实现了 `ActionTrait` ，所以这里可以将 action 转为 `WidgetAction`
+
+### Button Widget 实现机制
+
+我们再来看一下 makepad 内置 Button Widget 的实现。
+
+```rust
+live_design! {
+    ButtonBase = {{Button}} {}
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ButtonAction {
+    None,
+    /// The button was pressed (a "down" event).
+    Pressed(KeyModifiers),
+    /// The button was clicked (an "up" event).
+    Clicked(KeyModifiers),
+    /// The button was released (an "up" event), but should not be considered clicked
+    /// because the mouse/finger was not over the button area when released.
+    Released(KeyModifiers),
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct Button {
+		......
+		// 定义了各种属性字段
+}
+
+impl Widget for Button {
+		 fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+         let uid = self.widget_uid();
+         ...
+         if self.enabled && self.visible {
+            match event.hits(cx, self.draw_bg.area()) {
+                Hit::FingerDown(fe) => {
+                    if self.grab_key_focus {
+                        cx.set_key_focus(self.draw_bg.area());
+                    }
+                    cx.widget_action(uid, &scope.path, ButtonAction::Pressed(fe.modifiers));
+                    self.animator_play(cx, id!(hover.pressed));
+                }
+                ...
+              }
+              ...
+          }
+     }
+
+     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
+        if !self.visible {
+            return DrawStep::done();
+        }
+
+        self.draw_bg.begin(cx, walk, self.layout);
+        self.draw_icon.draw_walk(cx, self.icon_walk);
+        self.draw_text
+            .draw_walk(cx, self.label_walk, Align::default(), self.text.as_ref());
+        self.draw_bg.end(cx);
+        DrawStep::done()
+    }
+}
+
+impl Button {
+    pub fn clicked_modifiers(&self, actions: &Actions) -> Option<KeyModifiers> {
+        if let ButtonAction::Clicked(m) = actions.find_widget_action(self.widget_uid()).cast() {
+            Some(m)
+        } else {
+            None
+        }
+    }
+
+    ...
+}
+```
+
+这里只罗列出 Button Widget 的代码结构，而非全部代码。
+
+要实现一个 Widget ，必须要为其实现 `Widget` trait ，包括其中两个必须的方法 `handle_event` 和 `draw_walk` 。
+
+`handle_event` 中匹配特定的事件，比如 `Hit::FingerDown` 。匹配成功则通过 `cx.widget_action` 生成相应的 WidgetAction 。其中包含了 `ButtonAction::Pressed` 这个 Action。
+
+`draw_walk` 方法是 Makepad 框架中用于绘制 Widget 的核心方法。它结合了布局计算和实际绘制操作。
+
+### Action 流程总结
+
+当按钮被点击时的实际流程：
+
+1. 用户点击按钮：
+    - 操作系统捕获到这个点击事件。
+2. 事件传递到应用：
+    - 操作系统将这个事件传递给 Makepad 应用。
+3. 事件进入主循环（应用启动时， `app_main!` 会开启一个主循环）：
+    - 在当前的事件循环中，这个点击事件被传递给 `AppMain::handle_event`。
+4. UI 树事件处理：
+    - 事件通过 `self.ui.handle_event(cx, event, &mut Scope::empty())` 传递给 UI 树。
+5. 按钮处理事件：
+    - 事件到达 Button 组件的 `handle_event` 方法。
+6. Action 生成：
+    - Button 识别到点击，立即生成 `ButtonAction::Pressed` 或 `ButtonAction::Clicked`。
+    - 使用 `cx.widget_action(uid, &scope.path, ButtonAction::Clicked(fe.modifiers));` 将创建一个 WidgetAction 。
+7. Action 收集：
+    - 该 Action 被立即添加到 Cx 的内部 action buffer （ `ActionsBuf`）中。
+8. 事件处理完成：
+    - Button 和其他组件完成事件处理。
+9. 当前事件循环结束：
+    - `handle_event` 方法执行完毕。
+10. Action 处理：
+    - 在 `self.match_event(cx, event)` 中，此时 `event` 会匹配 `Event::Actions` 类型。
+11. 状态更新和 UI 刷新：
+    - 基于处理的 Actions，更新应用状态并触发必要的 UI 更新。
+
+这个流程展示了 Makepad 如何将底层事件转换为高抽象层面的 Actions，并在整个应用中传播。这种设计允许:
+
+- 将事件处理逻辑分散到各个 Widget 中。
+- 提供一个统一的机制来处理用户交互。
+- 实现复杂的交互模式，如跨组件通信。
+- 保持类型安全，同时允许动态行为。
+
+这个系统的优雅之处在于它结合了即时的事件处理和延迟的 action 处理，提供了灵活性和性能的平衡。
