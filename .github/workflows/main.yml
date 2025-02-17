@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -41,14 +39,23 @@ jobs:
       - name: Build with Rspress
         run: |
           pnpm run build
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        if: github.repository_owner == 'project-robius-china'
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        if: github.repository == 'project-robius-china/makepad-book'
         with:
           path: doc_build
 
   # Deployment job
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: |
+      github.repository == 'project-robius-china/makepad-book' &&
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
