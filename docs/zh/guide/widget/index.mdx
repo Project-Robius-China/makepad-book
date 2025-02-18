@@ -379,9 +379,9 @@ impl MatchEvent for App {
             // 更新标签文本
             // 同样，通过 `id!()` 获取 input1 文本输入实例
             let input = self.ui.text_input(id!(input1));
-            // 通过文本输入框组件内置的 `set_text_and_redraw`
-            // 更新文本输入框的内容为新的计数器值，并触发即时重绘。
-            input.set_text_and_redraw(cx, &format!("Counter: {}", self.counter));
+            // 通过文本输入框组件内置的 `set_text`
+            // 更新文本输入框的内容为新的计数器值。
+            input.set_text(cx, &format!("Counter: {}", self.counter));
         }
     }
 }
