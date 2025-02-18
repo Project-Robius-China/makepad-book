@@ -1,0 +1,8 @@
+[package]
+name = "makepad-book-simple"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# 使用了 rik 分支，因为这个分支比较活跃。
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }

@@ -375,9 +375,9 @@ impl MatchEvent for App {
             // Update label text
             // Similarly, get the input1 text input instance through `id!()`
             let input = self.ui.text_input(id!(input1));
-            // Use the text input component's built-in `set_text_and_redraw`
+            // Use the text input component's built-in `set_text`
             // to update the text input content with the new counter value and trigger immediate redraw
-            input.set_text_and_redraw(cx, &format!("Counter: {}", self.counter));
+            input.set_text(cx, &format!("Counter: {}", self.counter));
         }
     }
 }
