@@ -1,8 +1,13 @@
 [
     {
         "type": "dir",
-        "name": "start",
+        "name": "quick-start",
         "label": "Quick Start"
+    },
+    {
+        "type": "dir",
+        "name": "start",
+        "label": "About"
     },
     {
         "type": "dir",

@@ -1,8 +1,13 @@
 [
     {
         "type": "dir",
+        "name": "quick-start",
+        "label": "快速入门"
+    },
+    {
+        "type": "dir",
         "name": "start",
-        "label": "快速开始"
+        "label": "关于本项目"
     },
     {
         "type": "dir",
