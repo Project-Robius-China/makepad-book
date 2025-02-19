@@ -1,6 +1,11 @@
 # Introduction
 
 ### Basic Component Examples
+1. [UI zoo](https://github.com/makepad/makepad/tree/master/examples/ui_zoo): A simple example that  contain 1-of-each of all the UI elements.
+
+2. [News feed](https://github.com/makepad/makepad/tree/master/examples/news_feed): An example that simulates a news feed.
+
+3. [Slides](https://github.com/makepad/makepad/tree/master/examples/slides): A PPT-like example implemented using Makepad. 
 
 ### Common Use Case Examples
 1. [Makepad book simple demo](https://github.com/Project-Robius-China/makepad-book/tree/preview/examples/makepad_book_simple):The example introduced in the [Widget Basics](https://project-robius-china.github.io/makepad-book/zh/guide/widget/index) chapter of this book. You can refer to the corresponding chapter to learn how to implement it.
