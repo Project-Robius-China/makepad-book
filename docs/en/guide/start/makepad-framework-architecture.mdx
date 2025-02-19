@@ -13,9 +13,9 @@ The `Makepad Framework` consists of two main parts:
 ## Makepad Platform
 
 Makepad Platform serves as the platform abstraction layer, meaning it provides abstractions and encapsulations for various cross-platform operations.
-It primarily includes the following components:：
+It primarily includes the following components:
 
-- A window system with keyboard, mouse, and touch input support
+- A window system with input support(keyboard, mouse, and touch input)
 - A shader compiler and graphics interface
 - Network interfaces
 - Video and audio interfaces
@@ -37,7 +37,7 @@ Source code: [https://github.com/makepad/makepad/tree/rik/platform](https://gith
   - build.rs
 ```
 
-- `derive_live / live_compiler / live_tokenizer` are part of the Live system.
+- `derive_live / live_compiler / live_tokenizer` are part of [the Live system](#the-live-system).
 - `shader_compiler`: shader compiler.
 
 In Makepad's platform/src directory, we find multiple Rust source files (.rs files) and subdirectories, which can be categorized as follows:
@@ -158,7 +158,7 @@ The drawing layer includes:
 - Basic shaders
 - Shader standard library
 
-More details about the drawing layer will be covered in later dedicated chapters.。
+More details about the drawing layer will be covered in later dedicated chapters.
 
 ## Makepad Widget
 
