@@ -5,8 +5,6 @@
 > 仓库地址：[https://github.com/makepad/makepad](https://github.com/makepad/makepad)
 >
 > 🚧 目前较活跃的分支的`rik`, 建议您基于`rik`分支进行查看以便获得最新的`makepad`支持
->
-> 简单示例： [https://github.com/acyanbird/makepad-book-simple](https://github.com/acyanbird/makepad-book-simple) 这里提供了本篇教程使用 demo 的完整代码
 
 ## Makepad Book 介绍
 
@@ -18,7 +16,7 @@ Makepad 的最终愿景是构建一个 livecoding / design 混合 IDE。就像�
 
 :::info Makepad诞生背景
 
-Makepad 诞生于五年前（2019），可以查看 [makepad history](https://github.com/makepad/makepad_history) 仓库了解 makepad 的最初设想。
+Makepad 诞生于六年前（2019），可以查看 [makepad history](https://github.com/makepad/makepad_history) 仓库了解 makepad 的最初设想。
 
 Makepad 的作者是 Rik Arends。这个名字也许很多人不熟悉，但是你一定听过 Cloud9 IDE 和 ACE 代码编辑器。
 
@@ -44,7 +42,11 @@ Rik Arends 在创造这两个产品的时候，使用基于 HTML/CSS/Javascript 
 可以看到视频里：代码、3D树、设计图标都可以做到实时联动效果，视频最后还展示了惊艳的代码折叠动画效果。
 
 
-为了达到这样的愿景，`Makepad` 就提供两大组成部分：`Makepad Studio` 和 `Makepad Framework` 。
+为了达到这样的愿景，`Makepad`提供了两大组成部分：
+
+- [Makepad Framework](/guide/start/makepad-framework)
+- [Makepad Studio](/guide/start/makepad-studio)
+
 
 ## 优势
 
@@ -54,6 +56,8 @@ Rik Arends 在创造这两个产品的时候，使用基于 HTML/CSS/Javascript 
 - 为`VR/AR`做准备
 
 ## 采用的技术栈优劣
+
+**世界上不存在完美的技术栈，一切都只是权衡**，Makepad 也是在这种不断的权衡之下发展的。它也有自己的优势和劣势。
 
 - Rust 拥有很多优势，比如高性能、安全、强大的类型系统、可预测的运行时、强大的包管理器、与 C 无缝兼容的 ABI、官方维护的唯一编译器（无需考虑像C/Cpp 那样多个编译器差异）。
 
@@ -66,5 +70,3 @@ Rik Arends 在创造这两个产品的时候，使用基于 HTML/CSS/Javascript 
 - Makepad 还采用了`混合即时模式（Hybrid immediate mode，交替使用即时模式和保留模式）`。这样的好处是，从代码角度来看，数据变化时更新 UI 非常简单。布局也会更加简单。但是缺点是，与 Swfit/ Flutter / React 是不同的模式，需要学习成本。 布局模型也不像 flexbox 或 flutter 模式，但是可以扩展。
 
 - Makepad 也重新实现了`渲染栈（render stack）`。优点是，可以利用 GPU 来加速 UI，容易将设计能力整合到系统中。缺点是，字体渲染需要重新进行，需要自己加载 ttf 文件，并且增加 Web/ 移动设备的包大小。难以与仅提供高级渲染结构（比如 HTML 或 本地平台的 UI 工具包） 用于本地功能和可访问性的系统集成（React Native 的优势所在）。将越来越多的本地 API 桥接到 Rust/Makepad 是一项巨大的任务。
-
-**世界上不存在完美的技术栈，一切都只是权衡**，Makepad 也是在这种不断的权衡之下发展的。
