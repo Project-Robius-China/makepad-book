@@ -5,18 +5,33 @@
 > Github Repo：[https://github.com/makepad/makepad](https://github.com/makepad/makepad)
 >
 > 🚧 Currently the more active branch is `rik`, it is recommended that you check based on the `rik` branch to get the latest `makepad` support.
->
-> Simple example: [https://github.com/acyanbird/makepad-book-simple](https://github.com/acyanbird/makepad-book-simple) This repository provides the complete code for the demo used in this tutorial.
 
 Makepad is an in-development shader based live designable OSS UI-Framework
 
 ## Makepad Book Introduction
 
-The Book of Makepad, aimed at Makepad application developers and contributors, systematically introduces various aspects of the Rust cross-platform Makepad UI framework.
+The Book of Makepad is aimed to Makepad application developers and contributors. It systematically introduces various aspects of the Rust cross-platform Makepad UI framework.
 
 ## Makepad Introduction
 
-The ultimate vision of Makepad is to build a livecoding/design hybrid IDE. Similar to how tools like Visual Basic or Delphi once unified developers and designers, Makepad, implemented in Rust, offers functionalities akin to design tools like Figma.
+The ultimate vision of Makepad is to build a livecoding/design hybrid IDE. Just like Visual Basic or Delphi once unified developers and designers. But different from them, Makepad is implemented in Rust and including a design tool similar to Figma.
+
+:::info Background of Makepad
+
+Makepad was born six years ago (2019). You can visit the [makepad history](https://github.com/makepad/makepad_history) repository to learn about the original vision of Makepad.
+
+The creator of Makepad is Rik Arends. This name may not be familiar to many people, but you must have heard of Cloud9 IDE and the ACE code editor.
+
+- [Cloud9 IDE](https://aws.amazon.com/cn/cloud9/)： Founded in 2010 and sold to Amazon in 2016, it is a cloud IDE, an open-source integrated development environment based on the cloud. It supports more than 40 languages, including PHP and Ruby, Python, and JavaScript/Node.js. It is almost entirely written in JavaScript and uses Node.js for the backend.
+
+- [Ace](https://ace.c9.io/)： An independent code editor written in JavaScript. Its goal is to create a web-based code editor that matches and extends the functionality, usability, and performance of existing native editors (such as TextMate, Vim, or Eclipse). It can be easily embedded into any web page and JavaScript application. Ace was developed as the primary editor for Cloud9 IDE and is the successor to the Mozilla Skywriter project.
+
+When creating these two products, Rik Arends used common web front-end technologies based on HTML/CSS/Javascript. He thought that using HTML as the UI for an IDE was simply madness, and he was deeply frustrated. For example, the code folding animations he wanted to implement were extremely difficult to achieve with HTML and other front-end technologies.
+
+Moreover, the performance of web front-end technologies was also very slow. Therefore, he decided to reimplement a native UI framework using Rust.
+
+:::
+
 
 The demo showcased in the video below demonstrates this vision.
 
@@ -44,7 +59,7 @@ To achieve this vision, `Makepad` needs to provide two main components:
 
 - App downloads should be fast
 
-    Filesize matters for products that also run on the web. Makepad projects are tiny. Check out our [pre-alpha IDE](http://www.makepad.dev/) live on the web.
+    Filesize matters for products that also run on the web. Makepad projects are tiny. 
 
 - Work should be done only once
 
@@ -65,6 +80,7 @@ To achieve this vision, `Makepad` needs to provide two main components:
     Rapid compile times preserve mental flow. Makepad proves that Rust can compile stunningly fast — and its live design system is even instantaneous.
 
 ## Advantages and Disadvantages of Makepad's Technology Stack
+**There is no such thing as a perfect tech stack in the world; everything is just a trade-off.** Makepad has also developed under these constant trade-offs. It has its own strengths and weaknesses.
 
 ### Rust
 
