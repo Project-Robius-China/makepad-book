@@ -117,7 +117,7 @@ You could see the output:
 
 And the code is available [here](https://github.com/acyanbird/makepad-start/tree/01-basic-window):
 
-Let's explain the code structure:
+Let's explain the code structure, you don't need to understand them right now:
 
 1. `live_design!`,The live_design! macro is used to declare UI components and layout. It's part of the Live system we discussed earlier, implementing Live DSL using Rust macros to enable runtime UI modifications.
 2. `app_main!(App)`defines the application entry point. Since Makepad needs to support cross-platform applications (including Web/iOS/Android/MacOS/Windows/Linux), the `app_main!` macro internally includes entry point code for various platforms, hence using a macro rather than a simple `main` function.
@@ -158,4 +158,30 @@ live_design! {
 }
 ```
 ![darkred-bg](./darkred_bg.png)  
-Try to change whatever color you want by yourself!
+Try to change whatever color you want by yourself!  
+
+### Title 
+
+The window section sets the window's title to "Makepad UI zoo".   
+Following that is the caption_bar section, which defines a caption bar. visible: true indicates that the caption bar is visible, and margin: {left: -500} sets the left margin of the caption bar. You can change the value to move the position of the caption bar label.
+Finally, caption_label defines the label within the caption bar, with its text content set to "Makepad book UI Zoo caption bar".
+
+```rust
+ui: <Window> {
+            show_bg: true,
+            draw_bg: {
+                // color: #970707    // dark red
+                // color: vec3(0.592, 0.027, 0.027) // dark red as above
+                // color: vec3(1, 1, 0) // yellow
+                color: #000 // black
+                }
+            window: {
+                title: "Makepad UI zoo"
+            },
+            caption_bar = {
+                visible: true,
+                margin: {left: -500},
+                caption_label = { label = {text: "Makepad book UI Zoo caption bar"} },
+            },
+        }
+```
