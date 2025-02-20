@@ -11,6 +11,10 @@
         "zh": "线上沙龙",
         "en": "Online Salon"
     },
+    "api": {
+        "zh": "API",
+        "en": "API"
+    },
     "examples": {
         "zh": "示例入手",
         "en": "Examples"
