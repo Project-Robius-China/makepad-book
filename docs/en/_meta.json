@@ -15,6 +15,11 @@
         "activeMatch": "/examples/"
     },
     {
+        "text": "api",
+        "link": "/api/",
+        "activeMatch": "/api/"
+    },
+    {
         "text": "contribute",
         "link": "/contribute/index",
         "activeMatch": "/contribute/"
