@@ -187,3 +187,177 @@ ui: <Window> {
 ```
 ![change title](./change_title.png)
 And the [code](https://github.com/acyanbird/makepad-start/tree/02-change-title-and-color) is available.
+
+### Text
+From this section, we swtich the background color back to default for better display effect. Simply comment all the color field in draw_bg
+```rust
+            draw_bg: {
+                // color: #970707    // dark red
+                // color: vec3(0.592, 0.027, 0.027) // dark red as above
+                // color: vec3(1, 1, 0) // yellow
+                // color: #000 // black
+                }
+``` 
+Let's try to write some text inside this application~ But first, we need to define a child component body inside window:
+```rust
+            caption_bar = {
+                visible: true,
+                margin: {left: -500},
+                caption_label = { label = {text: "Makepad book UI Zoo caption bar"} },
+            },
+
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+            }
+```
+This View component which provided by makepad will be called body in our appliation. It takes up the full width and height of its parent container. It arranges its child components vertically, with a spacing of 10 units between them. The margin: 0. property ensures that there is no extra space around the body component itself.  
+Then the text itself can also be declared above of ui
+```rust
+    ZooTitle = <View> { // Define ZooTitle component inheriting from View
+        width: Fill,    // Fill width
+        height: Fit,    // Fit height 
+        margin: 10.0,
+        title = <H2> {
+            text: "Makepad UI Zoo"
+        }
+    }
+    ...
+    App = {{App}} {
+        ...
+```
+Then we can set the text component independently above ui:
+```rust
+live_design! {
+    // import Makepad theme and shaders, and widgets
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    ZooTitle = <View> { // Define ZooTitle component inheriting from View
+        width: Fill,    // Fill width
+        height: Fit,    // Fit height 
+        margin: 10.0,
+        title = <H2> {
+            text: "Makepad UI Zoo"
+        }
+    }
+    ...
+```
+Remind from previous sections, `width: Fill` means it will fill the parent component's width, `height: Fit` will set component height depends on its height. H2 component using markdown grammar to set the size of the text. 
+
+Then combine it together:
+```rust
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+
+                <ZooTitle> {}
+```
+A title and description is needed for every group of components, let's define them now and reuse them in the future.
+```rust
+    ZooHeader = <View> {
+        width: Fill, height: Fit,
+        flow: Down,
+        spacing: 10.,
+        margin: {top: 0., right: 9, bottom: 0., left: 9}
+        divider = <Hr> { }
+        title = <H3> { }
+    }
+
+    ZooDesc = <P> { }
+    ```
+    You will see some familiar thing in HTML, and it works just like that! And we only need to cover the title field to the text we want to.
+    
+    ```rust
+                    <ZooHeader> {
+                    title = {text: "Intro"}
+                    <ZooDesc> {
+                        text: "Intro."
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        flow: Down,
+                        <P> { text: "- Shader-based: what does that mean for how things work." }
+                        <P> { text: "- Inheritance mechanisms in the DSL." }
+                        <P> { text: "- Introduction to the layout system." }
+                        <P> { text: "- Base theme parameters." }
+                        <P> { text: "- Typographic system. Base font-size and contrast." }
+                        <P> { text: "- Space constants to control denseness of the design." }
+                        <P> { text: "- Transparency mechanism of the widgets. Nesting for structure." }
+                    }
+                }
+```
+
+![text](./text.png)
+The code is available at [this branch](https://github.com/acyanbird/makepad-start/tree/03-add-text)
+
+### Buttons and Typography
+
+And then, let's try more component that provided by makepad! But first we need to add a scroll bar component. Or the things outside the window cannot be shown.
+
+```rust
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+                scroll_bars: <ScrollBars> {}
+            }
+```
+Then we continue define buttons and styles as text.
+```rust
+                <ZooHeader> {
+                    title = {text: "Control Heights & Text Baselines"}
+                    <ZooDesc> {
+                        text: "Control heights and text baselines"
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        align: { x: 0., y: 0.}
+                        flow: Right,
+                        spacing: (THEME_SPACE_2)
+                        <P> { text: "TestLabel", width: Fit}
+                        <Vr> {} 
+                        <LinkLabel> { text: "TestButton", width: Fit}
+                        <CheckBox> { text: "TestButton"}
+                        <CheckBoxToggle> { text: "TestButton"}
+                        <ButtonFlat> { text: "TestButton"}
+                        <Button> { text: "TestButton"}
+                        <TextInput> { text: "TestButton"}
+                        <DropDown> { }
+                        <Slider> { text: "TestButton"}
+                        <SliderBig> { text: "TestButton"}
+                    }
+                }
+
+                <ZooHeader> {
+                    title = {text: "Typography"}
+                    <ZooDesc> {
+                        text: "Typography."
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        flow: Down,
+
+                        <H1> { text: "H1 headline" }
+                        <H1italic> { text: "H1 italic headline" }
+                        <H2> { text: "H2 headline" }
+                        <H2italic> { text: "H2 italic headline" }
+                        <H3> { text: "H3 headline" }
+                        <H3italic> { text: "H3 italic headline" }
+                        <H4> { text: "H4 headline" }
+                        <H4italic> { text: "H4 italic headline" }
+                        <P> { text: "P copy text" }
+                        <Pitalic> { text: "P italic copy text" }
+                        <Pbold> { text: "P bold copy text" }
+                        <Pbolditalic> { text: "P bold italic copy text" }
+                    }
+                }
+```
+In this case, flow for buttons is right so you could see these buttons are align in row. THEME_SPACE_2 is a constant. It is defined in the theme_mobile_light.rs file from makepad widget. 
+![buttons&typo](https://github.com/acyanbird/makepad-start/tree/04-buttons-and-typography)
