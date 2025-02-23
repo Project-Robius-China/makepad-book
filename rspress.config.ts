@@ -7,7 +7,6 @@ import alignImage from 'rspress-plugin-align-image';
 import ga from 'rspress-plugin-google-analytics';
 
 export default defineConfig({
-  base: '/makepad-book/',
   root: path.join(__dirname, 'docs'),
   title: 'Makepad Book',
   description: 'A book for makepad, want to quickly and easily to help you use makepad.',
