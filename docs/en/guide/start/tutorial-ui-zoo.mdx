@@ -160,7 +160,7 @@ Try to change whatever color you want by yourself!
 
 And the [code](https://github.com/acyanbird/makepad-start/tree/01-basic-window) is available.
 
-### Title 
+## Title 
 
 The window section sets the window's title to "Makepad UI zoo".   
 Following that is the caption_bar section, which defines a caption bar. visible: true indicates that the caption bar is visible, and `margin: {left: -500}` sets the left margin of the caption bar. You can change the value to move the position of the caption bar label.
@@ -188,7 +188,7 @@ ui: <Window> {
 ![change title](./change_title.png)
 And the [code](https://github.com/acyanbird/makepad-start/tree/02-change-title-and-color) is available.
 
-### Text
+## Text
 From this section, we swtich the background color back to default for better display effect. Simply comment all the color field in draw_bg
 ```rust
             draw_bg: {
@@ -296,7 +296,7 @@ A title and description is needed for every group of components, let's define th
 ![text](./text.png)
 The code is available at [this branch](https://github.com/acyanbird/makepad-start/tree/03-add-text)
 
-### Buttons and Typography
+## Buttons and Typography
 
 And then, let's try more component that provided by makepad! But first we need to add a scroll bar component. Or the things outside the window cannot be shown.
 
@@ -360,4 +360,138 @@ Then we continue define buttons and styles as text.
                 }
 ```
 In this case, flow for buttons is right so you could see these buttons are align in row. THEME_SPACE_2 is a constant. It is defined in the theme_mobile_light.rs file from makepad widget. 
-![buttons&typo](https://github.com/acyanbird/makepad-start/tree/04-buttons-and-typography)
+![buttons&typo](./buttons.png)
+
+Code is available at [branch 04](https://github.com/acyanbird/makepad-start/tree/04-buttons-and-typography)
+
+## More Views
+In this section we will show complex combination of views. As usual, we define a component that would show a color block. It would be a little bit different from classic view. The rounded view would have round corner instead of right angle:
+
+```rust
+    // define color of background container
+    COLOR_CONTAINER = (THEME_COLOR_D_1)
+
+    // define colors for demo blocks
+    DEMO_COLOR_1 = #8f0
+    DEMO_COLOR_2 = #0f8
+    DEMO_COLOR_3 = #80f
+
+    ZooBlock = <RoundedView> {
+        width: 50., height: 50.
+        margin: 0.,
+        spacing: 0.,
+
+        show_bg: true;
+        draw_bg: {
+            // return color based on position
+            fn get_color(self) -> vec4 {
+                return mix(self.color, self.color*0.5, self.pos.y);
+            }
+            // a float value for the corner radius
+            radius: (THEME_CONTAINER_CORNER_RADIUS)
+        }
+    }
+```
+What will `get_color` do? Well, This function provides a gradient effect to the color block. This mix function will return color base on position y, and it is a range from 0 to 1 from up to bottom. The color block will transition from self.color to self.color * 0.5 (a darker color), determined by self.pos.y. For example, if we set self.pos.y to 0, the block will be self.color.  
+
+Let's define a `ZooHeader` component that includes various nested views and descriptive components. You can adjust the flow, padding, spacing, and other fields to see how the nested views are rendered.
+```rust
+                <ZooHeader> {
+                    title = {text: "<View>" }
+                    <ZooDesc> {text:"This is a gray view with flow set to Right\nTo show the extend, the background has been enabled using show_bg and a gray pixelshader has been provided to draw_bg."}
+                    <View> {
+                        height: Fit
+                        flow: Right,
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        padding: 10.
+                        spacing: 10.
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                    }
+
+                    <ZooDesc> {text:"This utlizes a <Filler> to separate items."}
+                    <View> {
+                        height: Fit
+                        flow: Right,
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        padding: 10.
+                        spacing: 10.
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                        <Filler> {} // placeholder
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                    }
+                    
+                    <ZooDesc> {text:"This view is bigger on the inside"}
+                    <View> {
+                        width: 150, height: 150,
+                        flow: Right,
+                        padding: 10.
+                        spacing: 10.
+
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        scroll_bars: <ScrollBars> {}
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                        }
+                    }
+                }
+```
+
+![nested-views](./nested-views.png)
+
+The code is available [here](https://github.com/acyanbird/makepad-start/tree/05-view).
