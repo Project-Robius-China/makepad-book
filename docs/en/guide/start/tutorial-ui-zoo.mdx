@@ -493,5 +493,202 @@ Let's define a `ZooHeader` component that includes various nested views and desc
 ```
 
 ![nested-views](./nested-views.png)
+The bigger view inside smaller view also use scroll bar component to move.
 
 The code is available [here](https://github.com/acyanbird/makepad-start/tree/05-view).
+
+## Interaction
+We need to make the interface dynamic, so it can respond properly to user input. That way, we can fully utilize all the features of Makepad. Now, let's introduce the text input box and see how it works with the handle event to give dynamic feedback.
+
+### Text input
+
+```rust
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust] counter: usize  // use rust instead of live for counter
+}
+
+// Implement LiveRegister trait for registering live design
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+    }
+}
+
+impl MatchEvent for App{
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+    if let Some(txt) = self.ui.text_input(id!(simpletextinput)).changed(&actions){  // when text input changes
+        log!("TEXTBOX CHANGED {}", self.counter);   // output to console
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simpletextinput_outputbox));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, txt));
+    }
+}
+}
+
+// Implement AppMain trait for handling events
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        self.match_event(cx, event);    
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+```
+
+`#[rust] counter: usize` The counter is set to count the time of user input. `[rust]` Means the counter is defined by rust no live system. Because there will be more events we need to handle in future, put them into MatchEvent. This event logs the change, increments a counter. And updates a label with the new text and the counter value whenever the text in the input field changes. The ID, or we can call the named is used to located specific component.
+
+Let's define textinput boxes above:
+```rust
+                <ZooHeader> {
+                    title = {text:"<TextInput> with interaction"}
+                    padding: 10.
+                        <View> {
+                            height: Fit, width: Fill,
+                            spacing: (THEME_SPACE_2),
+                            textalreadyfilled = <TextInput> {
+                                text: "text here"
+                            }
+                            simpletextinput = <TextInput> { // simpletextinput is the id
+                                width: Fill,
+                             empty_message: "input" }
+                             // chanagble output box
+                            simpletextinput_outputbox = <P> {
+                                text: "Output"
+                            }
+                        }
+                }
+```
+Two text input boxes are defined, and the change of second one will also change the label aside. The label will show the content of box and counter variable which count user input. Take these two code snippets together, you will know how event works. 
+
+![text](./interaction-text.png)
+
+### Buttons
+
+We could also try event in button component. Not only the text but also image is supported by using  `<ButtonIcon>` instead of common `<Button>`. But we define a `<ZooGroup>` at first to group up component:
+
+```rust
+    ZooGroup = <RoundedView> {
+        height: Fit, width: Fill,
+        flow: Right,
+        align: { x: 0.0, y: 0.5},
+        margin: 0.,
+        show_bg: false;
+        draw_bg: { color: (COLOR_CONTAINER) }
+    }
+```
+
+And add these buttons. We use image by placing the svg file in the resources folder, which is at the same level as the src folder. You could find the image [here](https://github.com/acyanbird/makepad-start/blob/06-interaction/resources/Icon_Favorite.svg). The image could be colored by using color field. Also flat button is introduced, it does not have a prominent border and background color. 
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<Button>"}
+                    <ZooDesc> {text:"A small clickable region"}
+                    <ZooGroup> {
+                        flow: Down,
+                        width: Fill, height: Fit,
+                        align: { x: 0.0, y: 0.5 }
+                        spacing: 10.,
+
+                        <H4> { text: "Default"}
+                        <Label> { text: "<Button>"}
+                        basicbutton = <Button> { text: "I can be clicked" }
+
+                        <H4> { text: "Button with an icon"}
+                        <Label> { text: "<ButtonIcon>"}
+                        iconbutton = <ButtonIcon> {
+                            draw_icon: {
+                                color: #ff0,
+                                svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                            }
+                            text: "I can have a icon!"
+                        }
+
+                        <H4> { text: "Flat Mode"}
+                        <Label> { text: "<ButtonFlat>"}
+                        <View> {
+                            flow: Right,
+                            align: { x: 0., y: 0.5 }
+                            width: Fill, height: Fit,
+                            <ButtonFlat> {
+                                draw_icon: {
+                                    color: #f00,
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                                text: "I can have a lovely icon!"
+                            }
+
+                            <ButtonFlat> {
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+
+                            <ButtonFlat> {
+                                flow: Down,
+                                icon_walk: { width: 15. }
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                                text: "Vertical Layout"
+                            }
+                        }
+                    }
+                }
+```
+
+Now let's handle the event. 
+
+```rust
+    if let Some(txt) = self.ui.text_input(id!(simpletextinput)).changed(&actions){  // when text input changes
+        log!("TEXTBOX CHANGED {}", self.counter);   // output to console
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simpletextinput_outputbox));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, txt));
+    }
+
+    if self.ui.button(id!(basicbutton)).clicked(&actions) {
+        log!("BASIC BUTTON CLICKED {}", self.counter);
+        self.counter += 1;
+        let btn = self.ui.button(id!(basicbutton));
+        btn.set_text(cx,&format!("Clicky clicky! {}", self.counter));
+    }
+
+    if self.ui.button(id!(iconbutton)).clicked(&actions) {
+        log!("ICON BUTTON CLICKED {}", self.counter);
+        self.counter += 1;
+        let btn = self.ui.button(id!(iconbutton));
+        btn.set_text(cx,&format!("Icon button clicked: {}", self.counter));
+    }
+```
+The counter is used to count the total click times, it is shared by all the buttons and text box. If you want to set counter seperatly, you could use different variable.
+
+
+![b](./interact-buttons.png)
+
+Makepad can treat with hover too. Let's see how the text color changed when cursor above the button:
+
+```rust
+                            <H4> { text: "Hover"}
+                            styledbutton = <Button> {
+                                draw_bg: {
+                                    fn pixel(self) -> vec4 {
+                                        return (THEME_COLOR_MAKEPAD) + self.pressed * vec4(1., 1., 1., 1.)
+                                    }
+                                }
+                                draw_text: {
+                                    fn get_color(self) -> vec4 {
+                                        return (THEME_COLOR_U_5) - vec4(0., 0.1, 0.4, 0.) * self.hover - self.pressed * vec4(1., 1., 1., 0.);
+                                    }
+                                }
+                                text: "I can be styled!"
+                            }
+```
+
+No need to change the match event for this one. `self.hover` is a bool value that make text color changed when the cursor is above. Also when the button is clicked, the background color and text color also changed.
+
+![hover](./hover.png)
+
+It's a bit uncleared but the text color change to orange instead of white when it is hover.
+
