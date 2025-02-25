@@ -329,7 +329,6 @@ Then we continue define buttons and styles as text.
                         <ButtonFlat> { text: "TestButton"}
                         <Button> { text: "TestButton"}
                         <TextInput> { text: "TestButton"}
-                        <DropDown> { }
                         <Slider> { text: "TestButton"}
                         <SliderBig> { text: "TestButton"}
                     }
@@ -637,6 +636,7 @@ And add these buttons. We use image by placing the svg file in the resources fol
                     }
                 }
 ```
+The icon_walk defines how the "walks" within its parent container, determining its own size and position. For the further information about layout and walk please check [layout system](https://book.makepad.rs/guide/layout-system/index).
 
 Now let's handle the event. 
 
@@ -793,8 +793,58 @@ You can see the code from [github branch 08](https://github.com/acyanbird/makepa
 ![Rotary](./rotary.png)
 
 ## Drop Down
-// TODO 
-How to output selected value?
+
+It seems that work without enum (and what is mean by databound?)
+
+We can define a drop down menu by directing using `<DropDown>` component:
+```rust
+                <ZooHeader> {
+                    title = {text:"<DropDown>"}
+                    <ZooDesc> {text:"DropDown control. This control currently needs to be databound which needs some plumbing. In this sample there is a binding context struct in the main app struct - which gets bound on app start - and updated during handle_actions."}
+                    <ZooGroup> {
+                        dropdown = <DropDown> {
+                            labels: ["Value One", "Value Two", "Thrice", "Fourth Value", "Option E", "Hexagons"],
+                            values: [ValueOne, ValueTwo, Thrice, FourthValue, OptionE, Hexagons]
+                        }
+                    }
+                }
+```
+
+It is quite straight forward to match display text label and values. But be careful, the expanded menu may be out of the windows and can't be reached.
+
+![out](./dropdown_out.png)
+
+So put a placeholder under it:
+
+```rust
+                <ZooHeader> {
+                    title = {text:"Place holder"}
+                    <ZooDesc> {text:"Place holder for drop down"}
+                    
+                }
+```
+
+We can get the index and label by using event_handle:
+
+```rust
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+        // Handle DropDown selection change
+        if let Some(selected) = self.ui.drop_down(id!(dropdown)).changed(&actions) {
+            log!("DROPDOWN SELECTED index {}", selected);
+            let selected_label = self.ui.drop_down(id!(dropdown)).selected_label();
+            log!("DROPDOWN SELECTED label {}", selected_label);
+        }
+```
+
+These codes means when the selection is changed, it will print out the selected label and index. Let's see the output:
+
+![0](./dropdown_select.png)
+![2](./dropdown2.png)
+
+```bash
+src/app.rs:602:13 - DROPDOWN SELECTED index 2
+src/app.rs:604:13 - DROPDOWN SELECTED label Thrice
+```
 
 ## File Tree
 // TODO
@@ -821,7 +871,8 @@ Makepad also support HTML and Markdown language. If you need to use them in your
                     <ZooGroup> {
                         <Markdown> {
                             width:Fill, height: Fit,
-                            body:"# Headline 1 \n ## Headline 2 \n ### Headline 3 \n #### Headline 4 \n This is standard text with a  \n\n line break a short ~~strike through~~ demo.\n\n *Italic text* \n\n **Bold text** \n\n - Bullet\n - Another bullet\n\n - Third bullet\n\n 1. Numbered list Bullet\n 2. Another list entry\n\n 3. Third list entry\n\n `Monospaced text`\n\n> This is a quote.\n\nThis is `inline code`.\n\n ```code block```"
+                            body:"# Headline 1 \n ## Headline 2 \n ### Headline 3 \n #### Headline 4 \n This is standard text with a  \n\n line break a short ~~strike through~~ demo.\n\n *Italic text* \n\n **Bold text** \n\n - Bullet\n - Another bullet\n\n - Third bullet\n\n 1. Numbered list Bullet\n 2. Another list entry\n\n 3. Third list entry\n\n `Monospaced text`\n\n> This is a quote.\n\nThis is `inline code`.\n\n ```code block
+                            ```"
                         }
                     }
                 }
@@ -1168,6 +1219,9 @@ Only one buttons is the group can be selected, so the event is used again to cha
         ui.radio_button_set(ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4))
             .selected_to_visible(cx, &ui, actions, ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4));
 ```
+
+We are using `ids!` instead of `id!` here.
+The `id!` macro is used to generate an identifier for a single component,  and `ids!` macro is used to generate a set of identifiers for multiple components.
 
 ![radio buttons](./radio_buttons.png)
 
