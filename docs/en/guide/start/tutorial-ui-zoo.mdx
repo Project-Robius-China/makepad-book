@@ -1168,3 +1168,39 @@ Only one buttons is the group can be selected, so the event is used again to cha
         ui.radio_button_set(ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4))
             .selected_to_visible(cx, &ui, actions, ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4));
 ```
+
+![radio buttons](./radio_buttons.png)
+
+## Slides View
+
+Makepad could easily build PPT like slides. The `<SlideChapter>` will set background into orange color, and `<Slide>` background is black.
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<SlidesView>"}
+                    width: Fill, height: Fit,
+                    <ZooDesc> {text:"Slides View"}
+                    <View> {
+                        width: Fill, height: Fit,
+                        <SlidesView> {
+                            width: Fill, height: 400,
+
+                            <SlideChapter> {
+                                title = {text: "Hey!"},
+                                <SlideBody> {text: "This is the 1st slide. Use your right\ncursor key to show the next slide."}
+                            }
+
+                            <Slide> {
+                                title = {text: "Second slide"},
+                                <SlideBody> {text: "This is the 2nd slide. Use your left\ncursor key to show the previous slide."}
+                            }
+
+                        }
+                    }
+                }
+```
+
+The slide chapter:
+![slide chapter](./slide_chapter.png)
+Common slide:
+![common slide](./common_slide.png)
