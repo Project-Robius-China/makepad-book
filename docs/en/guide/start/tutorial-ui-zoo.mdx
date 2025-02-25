@@ -915,3 +915,89 @@ Loading and display an image is similar as loading a specific font for text. We 
 We need a view component that include image. This image could be stretch and fit to longest edge, shortest edge. Or fit into the vertical or the horizontal edge.
 
 ![duck image](./duck_image.png)
+
+## Check box
+
+These include multiple nested views and checkbox components to demonstrate different checkbox modes. The check can also bind to event just like button.
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<CheckBox>"}
+                    <ZooDesc> {text:"Checkbox"}
+                    <ZooGroup> {
+                        height: Fit
+                        spacing: (THEME_SPACE_2)
+                        flow: Down,
+                        <H4> { text: "Output demo"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5}
+                            simplecheckbox = <CheckBox> {text:"Check me out!"}
+                            simplecheckbox_output = <Label> { text:"hmm" }
+                        }
+                        <H4> { text: "Standard Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBox> {text:"Check me out!"}
+                            <CheckBox> {text:"Check me out!"}
+                            <CheckBox> {text:"Check me out!"}
+                        }
+                        <H4> { text: "Toggle Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBoxToggle> {text:"Check me out!" }
+                            <CheckBoxToggle> {text:"Check me out!" }
+                            <CheckBoxToggle> {text:"Check me out!" }
+                        }
+                    }
+                }
+```
+
+Bind the checkbox in event. When the check box is clicked, label aside will changed.
+
+```rust
+    if let Some(check) = self.ui.check_box(id!(simplecheckbox)).changed(actions) {
+        log!("CHECK BUTTON CLICKED {} {}", self.counter, check);
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simplecheckbox_output));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, check));
+    }
+```
+![checkbox](./checkbox.png)
+
+We can customize checkbox, too. Using the heart svg image we used in button.
+
+```rust
+<H4> { text: "Custom Icon Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBoxCustom> {
+                                text:"Check me out!"
+                                draw_check: { check_type: None }
+                                draw_icon: {
+                                    color_active: #f00,
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+                            <CheckBoxCustom> {
+                                text:"Check me out!"
+                                draw_check: { check_type: None }
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+                        }
+```
+We can also change icon color by using color_active field.
+
+![cust-box](./customize_box.png)
