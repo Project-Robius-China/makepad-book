@@ -972,7 +972,7 @@ Bind the checkbox in event. When the check box is clicked, label aside will chan
 ```
 ![checkbox](./checkbox.png)
 
-We can customize checkbox, too. Using the heart svg image we used in button.
+We can customize checkbox, too. Using the [heart svg image](https://github.com/acyanbird/makepad-start/blob/12-checkbox/resources/Icon_Favorite.svg) we used in button.
 
 ```rust
 <H4> { text: "Custom Icon Mode"}
@@ -1001,3 +1001,170 @@ We can customize checkbox, too. Using the heart svg image we used in button.
 We can also change icon color by using color_active field.
 
 ![cust-box](./customize_box.png)
+
+## Radio button
+
+This is special type of buttons, only one button in the group can be selected. The first two group of buttons are similar to check box. And the text and image itself can also be the clickable area.
+
+```rust
+<ZooHeader> {
+                    title = {text:"<RadioButton>"}
+                    <ZooDesc> {text:"Todo: List the different radio button templates."}
+                    <ZooGroup> {
+                        flow: Down,
+                        spacing: (THEME_SPACE_2)
+                        <H4> { text: "Default"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            radios_demo = <View> {
+                                spacing: (THEME_SPACE_2)
+                                width: Fit, height: Fit,
+                                radio1 = <RadioButton> { text: "Option 1" }
+                                radio2 = <RadioButton> { text: "Option 2" }
+                                radio3 = <RadioButton> { text: "Option 3" }
+                                radio4 = <RadioButton> { text: "Option 4" }
+                            }
+                        }
+
+                        <H4> { text: "Custom Radios"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            iconradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                spacing: (THEME_SPACE_2)
+                                flow: Down,
+
+                                radio1 = <RadioButtonCustom> {
+                                    text: "Option 1"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio2 = <RadioButtonCustom> {
+                                    text: "Option 2"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #0f0,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio3 = <RadioButtonCustom> {
+                                    text: "Option 3"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #0ff,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio4 = <RadioButtonCustom> {
+                                    text: "Option 4"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #f00,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                            }
+                        }
+
+                        <H4> { text: "Text only"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            textonlyradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                flow: Right,
+                                spacing: (THEME_SPACE_2)
+                                radio1 = <RadioButtonTextual> { text: "Option 1" }
+                                radio2 = <RadioButtonTextual> { text: "Option 2" }
+                                radio3 = <RadioButtonTextual> { text: "Option 3" }
+                                radio4 = <RadioButtonTextual> { text: "Option 4" }
+                            }
+                        }
+
+
+                        <H4> { text: "Button Group"}
+                        <ButtonGroup> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            radiotabs_demo = <View> {
+                                width: Fit, height: Fit,
+                                radio1 = <RadioButtonTab> { text: "Option 1" }
+                                radio2 = <RadioButtonTab> { text: "Option 2" }
+                                radio3 = <RadioButtonTab> { text: "Option 3" }
+                                radio4 = <RadioButtonTab> { text: "Option 4" }
+                            }
+                        }
+
+                        <H4> { text: "Media"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            mediaradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                flow: Right,
+                                spacing: (THEME_SPACE_2)
+                                radio1 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio2 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio3 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio4 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                            }
+                        }
+                    }
+                }
+```
+
+Only one buttons is the group can be selected, so the event is used again to change the visibility. Or the button can only be selected but can't be cancelled.
+
+```rust
+    impl MatchEvent for App{
+        fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+            let ui = self.ui.clone();
+
+        ui.radio_button_set(ids!(radios_demo.radio1, radios_demo.radio2, radios_demo.radio3, radios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(radios_demo.radio1, radios_demo.radio2, radios_demo.radio3, radios_demo.radio4));
+
+        ui.radio_button_set(ids!(iconradios_demo.radio1, iconradios_demo.radio2, iconradios_demo.radio3, iconradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(iconradios_demo.radio1, iconradios_demo.radio2, iconradios_demo.radio3, iconradios_demo.radio4));
+
+        ui.radio_button_set(ids!(radiotabs_demo.radio1, radiotabs_demo.radio2, radiotabs_demo.radio3, radiotabs_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(radiotabs_demo.radio1, radiotabs_demo.radio2, radiotabs_demo.radio3, radiotabs_demo.radio4));
+
+        ui.radio_button_set(ids!(textonlyradios_demo.radio1, textonlyradios_demo.radio2, textonlyradios_demo.radio3, textonlyradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(textonlyradios_demo.radio1, textonlyradios_demo.radio2, textonlyradios_demo.radio3, textonlyradios_demo.radio4));
+
+        ui.radio_button_set(ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4));
+```
