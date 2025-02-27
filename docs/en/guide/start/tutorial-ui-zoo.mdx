@@ -850,7 +850,7 @@ src/app.rs:604:13 - DROPDOWN SELECTED label Thrice
 
 ## HTML and Markdown
 
-Makepad also support HTML and Markdown language. If you need to use them in your application, simply include them into correct component. But the link label is not working now, you can't open google by clicking the link. It will be fixed in the future. To implement by your own, You could also check [robius-open](https://github.com/project-robius/robius-open) project.
+Makepad also support HTML and Markdown language. If you need to use them in your application, simply include them into correct component. But the link label is not working now, you can't open google by clicking the link. It won't be fixed in the future, so to implement by your own, You could also check [robius-open](https://github.com/project-robius/robius-open) project.
 
 ```rust
                 <ZooHeader> {
@@ -877,7 +877,24 @@ Makepad also support HTML and Markdown language. If you need to use them in your
                 }
 ```
 
+For now we will print url when you click it.
+
+```rust
+impl MatchEvent for App{
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+        for action in actions.iter() {
+            if let HtmlLinkAction::Clicked { url, .. } = action.as_widget_action().cast() {
+                  //robius_open::Uri::new(&url).open() 
+                  log!("URL CLICKED: {}", url);
+            }
+        }
+```
+
 And these are following output:
+
+```bash
+src/app.rs:602:19 - URL CLICKED: https://www.google.com/
+```
 
 ![html](./html.png)
 ![markdown](./markdown.png)
