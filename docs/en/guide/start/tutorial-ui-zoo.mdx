@@ -1274,3 +1274,190 @@ The slide chapter:
 ![slide chapter](./slide_chapter.png)
 Common slide:
 ![common slide](./common_slide.png)
+
+## Animation
+
+We can play animation in Makepad. We use [typing animation](https://github.com/project-robius/robrix/blob/main/src/shared/typing_animation.rs) component in robrix. This animation is three dots bounsing in sine wave:
+
+![dot stop](./animation_stopped.png)
+
+We need to separate a new file to draw this animation.
+
+`typing_animation.rs`
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    pub TypingAnimation = {{TypingAnimation}} {
+        width: 48,
+        height: 24,
+        flow: Down,
+        show_bg: true,
+        draw_bg: {
+            color: #000
+            uniform freq: 5.0,  // Animation frequency
+            uniform phase_offset: 102.0, // Phase difference
+            uniform dot_radius: 2.5, // Dot radius
+            uniform thetime: 0.0,
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let amplitude = self.rect_size.y * 0.22;
+                let center_y = self.rect_size.y * 0.5;
+                // Create three circle SDFs
+                sdf.circle(
+                    self.rect_size.x * 0.25,    // dot will be at 1/4 of the width 
+                    amplitude * sin(self.thetime * self.freq) + center_y,   //  using time to calculate the y position
+                    self.dot_radius // dot radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.5, // dot will be at 1/2 of the width 
+                    amplitude * sin(self.thetime * self.freq + self.phase_offset) + center_y, 
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.75,    // dot will be at 3/4 of the width 
+                    amplitude * sin(self.thetime * self.freq + self.phase_offset * 2) + center_y, 
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                return sdf.result;
+            }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,
+    #[rust] next_frame: NextFrame,
+    #[rust] is_play: bool,  // flag to play or stop the animation
+}
+```
+
+We use the time to calculate y position of the dots. Three dots are printed in static x position and changing y position relates on time.
+
+So how can we start this animation? Well, we need to render 
+
+```rust
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        
+        if let Some(ne) = self.next_frame.is_event(event) {
+            let time = ((ne.time * 10.0).round() as u32 % 360) as f32;
+            self.draw_bg.set_uniform(cx, id!(thetime), &[time as f32]);
+            self.redraw(cx);    // redraw the widget
+            if !self.is_play {
+                return  // stop the animation
+            }
+            self.next_frame = cx.new_next_frame();
+        }
+
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+```
+
+We get the time and pass the uniform parameters into it. Then call the redraw of current component. Then it will check the is_play variable, if not playing directly return instead of renerding new next frame. By stopping render next frame, the whole animation will stop. The codes above basically is the main part of animation. Now let's implement the start and stop function.
+
+```rust
+impl TypingAnimationRef {
+    /// Starts animation of the bouncing dots.
+    pub fn animate(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = true;
+            inner.next_frame = cx.new_next_frame();
+        }
+    }
+    /// Stops animation of the bouncing dots.
+    pub fn stop_animation(&self) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = false;
+        }
+    }
+}
+```
+
+Now this little animation is completed! introduce it to the main program.
+
+Imports trait to use functions animate and stop_animation:
+```rust
+use makepad_widgets::*; // Import Makepad Widgets package
+use crate::typing_animation::TypingAnimationWidgetRefExt;    
+```
+
+Then define the component with a button to control play and stop:
+
+```rust
+                <ZooHeader> {
+                    title = {text:"Animation"}
+                    <ZooDesc> {text:"Typing animation"}
+                    <View> {
+                        width: Fill, 
+                        height: Fit,
+                        flow: Right,
+                        padding: 20,
+                        spacing: 20
+                    typing_animation = <TypingAnimation> {
+                        margin: {top: 1.1, left: -4 }
+                        padding: 0.0,
+                        draw_bg: {
+                            color: (#fff),
+                        }
+                        }
+                        typing_button = <Button> {
+                            text: "Start typing",
+                        }
+
+                    }
+                }
+```
+
+Register the context and define a bool variable to control playing:
+```rust
+
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust] counter: usize,  // use rust instead of live for counter
+    #[rust] typing: bool    // default false
+}
+
+fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+        crate::typing_animation::live_design(cx);
+
+    }
+```
+
+Then change the state by clicking the button:
+```rust
+        if self.ui.button(id!(typing_button)).clicked(&actions) {
+            // log!("typing BUTTON CLICKED {}", self.typing);
+            let typing_animation = self.ui.typing_animation(id!(typing_animation));
+            let type_button = self.ui.button(id!(typing_button));
+            if !self.typing {
+                // false to true, stop animation
+                typing_animation.animate(cx);
+                self.typing = !self.typing;
+                type_button.set_text(cx, "Stop typing");
+
+            } else {
+                // true to false, start animation
+                typing_animation.stop_animation();
+                self.typing = !self.typing;
+                type_button.set_text(cx, "Start typing");
+            }
+        }
+```
+![moving](./animation_moving.png)
