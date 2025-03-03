@@ -12,7 +12,21 @@ Makepad 之书，面向 Makepad 应用开发者和贡献者，系统地介绍了
 
 ## Makepad 介绍
 
-Makepad 的最终愿景是构建一个 livecoding / design 混合 IDE。就像曾经的 Visual Basic 或 Delphi 那类统一了开发者和设计师的工具一样，只不过 Makepad 是 Rust 实现，并且具有类似于 Figma 这样的设计工具。
+Makepad 是一个用 Rust 编写的开源跨平台 UI 框架，并配有功能强大的创作应用程序 Makepad Studio。这种组合为用户界面开发提供了一种简化的方法，使开发人员和设计人员能够轻松创建现代、高性能的应用程序。
+
+Makepad 是使用 Rust 构建的，Rust 是一种现代、安全的编程语言。它可在本机和网络上运行，支持包括 Windows、Linux、macOS、iOS 和 Android 在内的所有主流平台。
+
+Makepad 以其超快的编译速度著称，可确保高效、无中断的开发体验。
+
+Makepad 用户界面基于着色器。这确保了它的高性能，使其适用于构建复杂的应用程序，如类似于 Photoshop 的应用程序，也适用于 2.5D UI，如 VR/AR 应用程序中的 2.5D UI。
+
+与 HTML 相比，该框架通过使用即时模式和简单的 DSL 简化了样式，无需复杂的 DOM 或 CSS。它还提供对 GPU 的直接访问，提供更多控制和灵活性，同时避免了与垃圾回收相关的问题，确保更流畅的性能。
+
+Makepad 最突出的功能之一是实时样式化，它允许在代码中立即反映用户界面的变化，反之亦然，无需重新编译或重启。这一功能大大缩小了开发人员与设计人员之间的差距，提高了整体工作效率。
+Makepad Studio 将这一切与自己的集成开发环境和类似 Figma 的可视化工具结合在一起，让设计师可以直观地直接在实际产品上工作。
+
+另一个关键组件是 Stitch，它是一个基于 Rust 的实验性 WebAssembly（WASM）解释器。Stitch 以其卓越的速度和轻量级性能而闻名，目前被认为是最快的 WASM 解释器。[待定：在 Makepad 中使用。Superapps，扩展系统，允许在不牺牲性能的情况下插入构件......］
+
 
 :::info Makepad诞生背景
 

@@ -1,1 +1,1463 @@
 # Tutorial: UI Zoo
+
+You will need to build an modified version of UI zoo example from makepad. This tutorial will lead you get deep into makepad step by step. 
+
+You could find the code [here](https://github.com/acyanbird/makepad-start). The code for each section in a separate git branch. This makes it possible to see the intermediate state after each section. 
+
+## Set up your project
+
+To build the Makepad crates you first need to install Rust. https://www.rust-lang.org/tools/install  
+We recommend that you build Makepad using the nightly Rust toolchain.
+
+```bash
+rustup install nightly
+rustup default nightly
+```
+
+Use `cargo new makepad_book_ui_zoo` to create a crate.
+
+```bash
+cargo new makepad_book_ui_zoo
+```
+
+Add the `makepad-widgets` library dependency in `Cargo.toml`. Makepad is using 2021 version right now, so please change `edition = "2021"`.
+
+
+```toml
+[package]
+name = "makepad_book_ui_zoo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# use rik branch，because it is the active development branch
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+```
+
+Then create `lib.rs` and `app.rs` files under src.
+
+Your directory structure should look like this:
+
+```plaintext
+simple/
+├── Cargo.lock
+├── Cargo.toml
+├── src
+│   ├── app.rs
+│   ├── lib.rs
+│   └── main.rs
+
+```
+
+## Create basic window
+
+Then let's complete our code in the `app.rs` module. 
+
+Let's start by defining the overall component structure:
+
+```rust
+use makepad_widgets::*; // Import Makepad Widgets package
+
+// Define live_design macro for declaring UI components and layout
+live_design! {
+    // import Makepad theme and shaders, and widgets
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    App = {{App}} {
+        ui: <Window> { }
+        }
+    }
+
+
+// Define App struct containing UI and counter
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef // UI component reference
+}
+
+// Implement LiveRegister trait for registering live design
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+    }
+}
+
+// Implement AppMain trait for handling events
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // Handle UI events
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+
+// Define application entry point
+app_main!(App);
+```
+
+Add the following code to `lib.rs`:
+
+```rust
+pub mod app;
+```
+
+Add the following code to call app_main() in main file:
+
+```rust
+fn main() {
+    makepad_start::app::app_main();
+}
+```  
+Run this project by
+`cargo run`
+
+You could see the output:
+
+![basic view](./basic-view.png)  
+
+Let's explain the code structure, you don't need to understand them right now:
+
+1. `live_design!`,The live_design! macro is used to declare UI components and layout. It's part of the Live system we discussed earlier, implementing Live DSL using Rust macros to enable runtime UI modifications.
+2. `app_main!(App)`defines the application entry point. Since Makepad needs to support cross-platform applications (including Web/iOS/Android/MacOS/Windows/Linux), the `app_main!` macro internally includes entry point code for various platforms, hence using a macro rather than a simple `main` function.
+3. The Rust struct `App` uses the `derive(Live, LiveHook)` derive macro, automatically implementing two Live system-related traits for `App`: `Live` and `LiveHook`.
+    - The `ui` field of type `WidgetRef` can be thought of as `dyn Widget`, representing UI controls that implement the `Widget` trait. These controls can be updated at runtime, marked with the #[live] attribute, which automatically implements certain derive macros, like creating `LiveId` for the field and calling `LiveHook` methods.
+    - The `counter` field belongs to business logic, used for counting, so it's marked with the `#[rust]` attribute, telling the Live system it belongs to Rust's domain rather than UI controls and doesn't participate in runtime updates.
+    - The `Live` and `LiveHook` traits are related to Makepad controls' Live lifecycle, which we'll discuss in detail later.
+4. The `LiveRegister` trait is used to register `App` with the Live system.
+5. The `AppMain` trait defines the `handle_event` method for passing various events to the UI tree, including mouse, timer, or scroll events.
+    - This trait object is actually called in `app_main!`, making it part of the program entry point.
+    - Internally, `ui`'s `handle_event` takes parameters `cx`/`event` for context information and events, while `Scope` is used for component state sharing, with `Scope::empty()` currently representing no shared state.
+
+## Change background color and title
+
+We can change the background color to the window by simply define color inside draw_bg field.  
+
+### Background Color
+There are several way to present color. For color using `vec3()`, the range is 0 and 1 instead of 0 to 255. For example, you can convert the color #970707 to vec3 form. #970707 is a dark red, and its RGB values are (151, 7, 7). By converting these values to floating-point numbers between 0 and 1, you can get vec3(0.592, 0.027, 0.027).
+
+```rust
+live_design! {
+    // import Makepad theme and shaders, and widgets
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+    App = {{App}} {
+        ui: <Window> {
+            show_bg: true,
+            draw_bg: {
+                color: #970707    // dark red
+                // color: vec3(0.592, 0.027, 0.027) // dark red as above
+                // color: vec3(1, 1, 0) // yellow
+                // color: #000 // black
+                }
+...
+        }
+    }
+}
+```
+![darkred-bg](./darkred_bg.png)  
+Try to change whatever color you want by yourself!  
+
+And the [code](https://github.com/acyanbird/makepad-start/tree/01-basic-window) is available.
+
+## Title 
+
+The window section sets the window's title to "Makepad UI zoo".   
+Following that is the caption_bar section, which defines a caption bar. visible: true indicates that the caption bar is visible, and `margin: {left: -500}` sets the left margin of the caption bar. You can change the value to move the position of the caption bar label.
+Finally, caption_label defines the label within the caption bar, with its text content set to "Makepad book UI Zoo caption bar".
+
+```rust
+ui: <Window> {
+            show_bg: true,
+            draw_bg: {
+                // color: #970707    // dark red
+                // color: vec3(0.592, 0.027, 0.027) // dark red as above
+                // color: vec3(1, 1, 0) // yellow
+                color: #000 // black
+                }
+            window: {
+                title: "Makepad UI zoo"
+            },
+            caption_bar = {
+                visible: true,
+                margin: {left: -500},
+                caption_label = { label = {text: "Makepad book UI Zoo caption bar"} },
+            },
+        }
+```
+![change title](./change_title.png)
+And the [code](https://github.com/acyanbird/makepad-start/tree/02-change-title-and-color) is available.
+
+## Text
+From this section, we swtich the background color back to default for better display effect. Simply comment all the color field in draw_bg
+```rust
+            draw_bg: {
+                // color: #970707    // dark red
+                // color: vec3(0.592, 0.027, 0.027) // dark red as above
+                // color: vec3(1, 1, 0) // yellow
+                // color: #000 // black
+                }
+``` 
+Let's try to write some text inside this application~ But first, we need to define a child component body inside window:
+```rust
+            caption_bar = {
+                visible: true,
+                margin: {left: -500},
+                caption_label = { label = {text: "Makepad book UI Zoo caption bar"} },
+            },
+
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+            }
+```
+This View component which provided by makepad will be called body in our appliation. It takes up the full width and height of its parent container. It arranges its child components vertically, with a spacing of 10 units between them. The margin: 0. property ensures that there is no extra space around the body component itself.  
+Then the text itself can also be declared above of ui
+```rust
+    ZooTitle = <View> { // Define ZooTitle component inheriting from View
+        width: Fill,    // Fill width
+        height: Fit,    // Fit height 
+        margin: 10.0,
+        title = <H2> {
+            text: "Makepad UI Zoo"
+        }
+    }
+    ...
+    App = {{App}} {
+        ...
+```
+Then we can set the text component independently above ui:
+```rust
+live_design! {
+    // import Makepad theme and shaders, and widgets
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    ZooTitle = <View> { // Define ZooTitle component inheriting from View
+        width: Fill,    // Fill width
+        height: Fit,    // Fit height 
+        margin: 10.0,
+        title = <H2> {
+            text: "Makepad UI Zoo"
+        }
+    }
+    ...
+```
+Remind from previous sections, `width: Fill` means it will fill the parent component's width, `height: Fit` will set component height depends on its height. H2 component using markdown grammar to set the size of the text. 
+
+Then combine it together:
+```rust
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+
+                <ZooTitle> {}
+```
+A title and description is needed for every group of components, let's define them now and reuse them in the future.
+```rust
+    ZooHeader = <View> {
+        width: Fill, height: Fit,
+        flow: Down,
+        spacing: 10.,
+        margin: {top: 0., right: 9, bottom: 0., left: 9}
+        divider = <Hr> { }
+        title = <H3> { }
+    }
+
+    ZooDesc = <P> { }
+    ```
+    You will see some familiar thing in HTML, and it works just like that! And we only need to cover the title field to the text we want to.
+    
+    ```rust
+                    <ZooHeader> {
+                    title = {text: "Intro"}
+                    <ZooDesc> {
+                        text: "Intro."
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        flow: Down,
+                        <P> { text: "- Shader-based: what does that mean for how things work." }
+                        <P> { text: "- Inheritance mechanisms in the DSL." }
+                        <P> { text: "- Introduction to the layout system." }
+                        <P> { text: "- Base theme parameters." }
+                        <P> { text: "- Typographic system. Base font-size and contrast." }
+                        <P> { text: "- Space constants to control denseness of the design." }
+                        <P> { text: "- Transparency mechanism of the widgets. Nesting for structure." }
+                    }
+                }
+```
+
+![text](./text.png)
+The code is available at [this branch](https://github.com/acyanbird/makepad-start/tree/03-add-text)
+
+## Buttons and Typography
+
+And then, let's try more component that provided by makepad! But first we need to add a scroll bar component. Or the things outside the window cannot be shown.
+
+```rust
+            body = <View> {
+                width: Fill, height: Fill,
+                flow: Down, //child components will be arranged vertically
+                spacing: 10.,   //spacing between child components
+                margin: 0.,     //margin around the component
+                scroll_bars: <ScrollBars> {}
+            }
+```
+Then we continue define buttons and styles as text.
+```rust
+                <ZooHeader> {
+                    title = {text: "Control Heights & Text Baselines"}
+                    <ZooDesc> {
+                        text: "Control heights and text baselines"
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        align: { x: 0., y: 0.}
+                        flow: Right,
+                        spacing: (THEME_SPACE_2)
+                        <P> { text: "TestLabel", width: Fit}
+                        <Vr> {} 
+                        <LinkLabel> { text: "TestButton", width: Fit}
+                        <CheckBox> { text: "TestButton"}
+                        <CheckBoxToggle> { text: "TestButton"}
+                        <ButtonFlat> { text: "TestButton"}
+                        <Button> { text: "TestButton"}
+                        <TextInput> { text: "TestButton"}
+                        <Slider> { text: "TestButton"}
+                        <SliderBig> { text: "TestButton"}
+                    }
+                }
+
+                <ZooHeader> {
+                    title = {text: "Typography"}
+                    <ZooDesc> {
+                        text: "Typography."
+                    }
+                    <View> {
+                        width: Fill, height: Fit,
+                        flow: Down,
+
+                        <H1> { text: "H1 headline" }
+                        <H1italic> { text: "H1 italic headline" }
+                        <H2> { text: "H2 headline" }
+                        <H2italic> { text: "H2 italic headline" }
+                        <H3> { text: "H3 headline" }
+                        <H3italic> { text: "H3 italic headline" }
+                        <H4> { text: "H4 headline" }
+                        <H4italic> { text: "H4 italic headline" }
+                        <P> { text: "P copy text" }
+                        <Pitalic> { text: "P italic copy text" }
+                        <Pbold> { text: "P bold copy text" }
+                        <Pbolditalic> { text: "P bold italic copy text" }
+                    }
+                }
+```
+In this case, flow for buttons is right so you could see these buttons are align in row. THEME_SPACE_2 is a constant. It is defined in the theme_mobile_light.rs file from makepad widget. 
+![buttons&typo](./buttons.png)
+
+Code is available at [branch 04](https://github.com/acyanbird/makepad-start/tree/04-buttons-and-typography)
+
+## More Views
+In this section we will show complex combination of views. As usual, we define a component that would show a color block. It would be a little bit different from classic view. The rounded view would have round corner instead of right angle:
+
+```rust
+    // define color of background container
+    COLOR_CONTAINER = (THEME_COLOR_D_1)
+
+    // define colors for demo blocks
+    DEMO_COLOR_1 = #8f0
+    DEMO_COLOR_2 = #0f8
+    DEMO_COLOR_3 = #80f
+
+    ZooBlock = <RoundedView> {
+        width: 50., height: 50.
+        margin: 0.,
+        spacing: 0.,
+
+        show_bg: true;
+        draw_bg: {
+            // return color based on position
+            fn get_color(self) -> vec4 {
+                return mix(self.color, self.color*0.5, self.pos.y);
+            }
+            // a float value for the corner radius
+            radius: (THEME_CONTAINER_CORNER_RADIUS)
+        }
+    }
+```
+What will `get_color` do? Well, This function provides a gradient effect to the color block. This mix function will return color base on position y, and it is a range from 0 to 1 from up to bottom. The color block will transition from self.color to self.color * 0.5 (a darker color), determined by self.pos.y. For example, if we set self.pos.y to 0, the block will be self.color.  
+
+Let's define a `ZooHeader` component that includes various nested views and descriptive components. You can adjust the flow, padding, spacing, and other fields to see how the nested views are rendered.
+```rust
+                <ZooHeader> {
+                    title = {text: "<View>" }
+                    <ZooDesc> {text:"This is a gray view with flow set to Right\nTo show the extend, the background has been enabled using show_bg and a gray pixelshader has been provided to draw_bg."}
+                    <View> {
+                        height: Fit
+                        flow: Right,
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        padding: 10.
+                        spacing: 10.
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                    }
+
+                    <ZooDesc> {text:"This utlizes a <Filler> to separate items."}
+                    <View> {
+                        height: Fit
+                        flow: Right,
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        padding: 10.
+                        spacing: 10.
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                        <Filler> {} // placeholder
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                    }
+                    
+                    <ZooDesc> {text:"This view is bigger on the inside"}
+                    <View> {
+                        width: 150, height: 150,
+                        flow: Right,
+                        padding: 10.
+                        spacing: 10.
+
+                        show_bg: true,
+                        draw_bg: { color: (COLOR_CONTAINER) }
+                        scroll_bars: <ScrollBars> {}
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                        }
+
+                        <View> {
+                            width: Fit, height: Fit,
+                            flow: Down,
+                            show_bg: false,
+                            spacing: 10
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_1)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_2)}}
+                            <ZooBlock> {draw_bg:{color: (DEMO_COLOR_3)}}
+                        }
+                    }
+                }
+```
+
+![nested-views](./nested-views.png)
+The bigger view inside smaller view also use scroll bar component to move.
+
+The code is available [here](https://github.com/acyanbird/makepad-start/tree/05-view).
+
+## Interaction
+We need to make the interface dynamic, so it can respond properly to user input. That way, we can fully utilize all the features of Makepad. Now, let's introduce the text input box and see how it works with the handle event to give dynamic feedback.
+
+### Text input
+
+```rust
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust] counter: usize  // use rust instead of live for counter
+}
+
+// Implement LiveRegister trait for registering live design
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+    }
+}
+
+impl MatchEvent for App{
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+    if let Some(txt) = self.ui.text_input(id!(simpletextinput)).changed(&actions){  // when text input changes
+        log!("TEXTBOX CHANGED {}", self.counter);   // output to console
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simpletextinput_outputbox));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, txt));
+    }
+}
+}
+
+// Implement AppMain trait for handling events
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        self.match_event(cx, event);    
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+```
+
+`#[rust] counter: usize` The counter is set to count the time of user input. `[rust]` Means the counter is defined by rust no live system. Because there will be more events we need to handle in future, put them into MatchEvent. This event logs the change, increments a counter. And updates a label with the new text and the counter value whenever the text in the input field changes. The ID, or we can call the named is used to located specific component.
+
+Let's define textinput boxes above:
+```rust
+                <ZooHeader> {
+                    title = {text:"<TextInput> with interaction"}
+                    padding: 10.
+                        <View> {
+                            height: Fit, width: Fill,
+                            spacing: (THEME_SPACE_2),
+                            textalreadyfilled = <TextInput> {
+                                text: "text here"
+                            }
+                            simpletextinput = <TextInput> { // simpletextinput is the id
+                                width: Fill,
+                             empty_message: "input" }
+                             // chanagble output box
+                            simpletextinput_outputbox = <P> {
+                                text: "Output"
+                            }
+                        }
+                }
+```
+Two text input boxes are defined, and the change of second one will also change the label aside. The label will show the content of box and counter variable which count user input. Take these two code snippets together, you will know how event works. 
+
+![text](./interaction-text.png)
+
+### Buttons
+
+We could also try event in button component. Not only the text but also image is supported by using  `<ButtonIcon>` instead of common `<Button>`. But we define a `<ZooGroup>` at first to group up component:
+
+```rust
+    ZooGroup = <RoundedView> {
+        height: Fit, width: Fill,
+        flow: Right,
+        align: { x: 0.0, y: 0.5},
+        margin: 0.,
+        show_bg: false;
+        draw_bg: { color: (COLOR_CONTAINER) }
+    }
+```
+
+And add these buttons. We use image by placing the svg file in the resources folder, which is at the same level as the src folder. You could find the image [here](https://github.com/acyanbird/makepad-start/blob/06-interaction/resources/Icon_Favorite.svg). The image could be colored by using color field. Also flat button is introduced, it does not have a prominent border and background color. 
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<Button>"}
+                    <ZooDesc> {text:"A small clickable region"}
+                    <ZooGroup> {
+                        flow: Down,
+                        width: Fill, height: Fit,
+                        align: { x: 0.0, y: 0.5 }
+                        spacing: 10.,
+
+                        <H4> { text: "Default"}
+                        <Label> { text: "<Button>"}
+                        basicbutton = <Button> { text: "I can be clicked" }
+
+                        <H4> { text: "Button with an icon"}
+                        <Label> { text: "<ButtonIcon>"}
+                        iconbutton = <ButtonIcon> {
+                            draw_icon: {
+                                color: #ff0,
+                                svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                            }
+                            text: "I can have a icon!"
+                        }
+
+                        <H4> { text: "Flat Mode"}
+                        <Label> { text: "<ButtonFlat>"}
+                        <View> {
+                            flow: Right,
+                            align: { x: 0., y: 0.5 }
+                            width: Fill, height: Fit,
+                            <ButtonFlat> {
+                                draw_icon: {
+                                    color: #f00,
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                                text: "I can have a lovely icon!"
+                            }
+
+                            <ButtonFlat> {
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+
+                            <ButtonFlat> {
+                                flow: Down,
+                                icon_walk: { width: 15. }
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                                text: "Vertical Layout"
+                            }
+                        }
+                    }
+                }
+```
+The icon_walk defines how the "walks" within its parent container, determining its own size and position. For the further information about layout and walk please check [layout system](https://book.makepad.rs/guide/layout-system/index).
+
+Now let's handle the event. 
+
+```rust
+    if let Some(txt) = self.ui.text_input(id!(simpletextinput)).changed(&actions){  // when text input changes
+        log!("TEXTBOX CHANGED {}", self.counter);   // output to console
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simpletextinput_outputbox));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, txt));
+    }
+
+    if self.ui.button(id!(basicbutton)).clicked(&actions) {
+        log!("BASIC BUTTON CLICKED {}", self.counter);
+        self.counter += 1;
+        let btn = self.ui.button(id!(basicbutton));
+        btn.set_text(cx,&format!("Clicky clicky! {}", self.counter));
+    }
+
+    if self.ui.button(id!(iconbutton)).clicked(&actions) {
+        log!("ICON BUTTON CLICKED {}", self.counter);
+        self.counter += 1;
+        let btn = self.ui.button(id!(iconbutton));
+        btn.set_text(cx,&format!("Icon button clicked: {}", self.counter));
+    }
+```
+The counter is used to count the total click times, it is shared by all the buttons and text box. If you want to set counter seperatly, you could use different variable.
+
+
+![b](./interact-buttons.png)
+
+Makepad can treat with hover too. Let's see how the text color changed when cursor above the button:
+
+```rust
+                            <H4> { text: "Hover"}
+                            styledbutton = <Button> {
+                                draw_bg: {
+                                    fn pixel(self) -> vec4 {
+                                        return (THEME_COLOR_MAKEPAD) + self.pressed * vec4(1., 1., 1., 1.)
+                                    }
+                                }
+                                draw_text: {
+                                    fn get_color(self) -> vec4 {
+                                        return (THEME_COLOR_U_5) - vec4(0., 0.1, 0.4, 0.) * self.hover - self.pressed * vec4(1., 1., 1., 0.);
+                                    }
+                                }
+                                text: "I can be styled!"
+                            }
+```
+
+No need to change the match event for this one. `self.hover` is a bool value that make text color changed when the cursor is above. Also when the button is clicked, the background color and text color also changed.
+
+![hover](./hover.png)
+
+It's a bit uncleared but the text color change to orange instead of white when it is hover.
+
+The code is available [here](https://github.com/acyanbird/makepad-start/tree/06-interaction).
+
+## Text with fonts and color
+
+We introduce text display at very beginning, but now for the more advance use~ Both font and size can be customize:
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<Label>"}
+                    <ZooDesc> { text:"Default single line textbox" }
+                    <ZooGroup> { <Label> { text: "This is a small line of text" } }
+                    <ZooGroup> {
+                        <Label> {
+                            draw_text: {
+                                color: #fff,
+                                text_style: {
+                                    font: {path: dep("crate://self/resources/XITSOneText-BoldItalic.ttf")},
+                                    font_size: 20,
+                                }
+                            },
+                            text: "You can style text using colors and fonts"
+                        }
+                    }
+                    <ZooGroup> {
+                        <Label> {
+                            draw_text: {
+                                fn get_color(self) ->vec4{
+                                    return mix((THEME_COLOR_MAKEPAD), (THEME_COLOR_U_HIDDEN), self.pos.x)
+                                }
+                                color: (THEME_COLOR_MAKEPAD)
+                                text_style: {
+                                    font_size: 40.,
+                                }
+                            },
+                            text: "OR EVEN SOME PIXELSHADERS"
+                        }
+                    }
+                }
+```
+
+![fonts](./fonts.png)
+
+The font use in example is available [here](https://github.com/acyanbird/makepad-start/blob/07-text-with-font-and-color/resources/XITSOneText-BoldItalic.ttf). You can change it by your own but not all of the font support well. For the final line, we use same way as `draw_bg` in section More Views. Just consider every single letter as a color block, but mix them horizontally instead of vertically.
+
+Working branch is available [here](https://github.com/acyanbird/makepad-start/tree/07-text-with-font-and-color).
+
+## Sliders
+
+A Slider is a user interface element that allows users to select a value by dragging a handle along a track. Sliders are commonly used to adjust parameters or set values within a range.
+
+### Common Slider
+
+There are several parameters can define. Using draw_slider define the left and right color of slider. 
+```rust
+                <ZooHeader> {
+                    title = { text:"<Slider>" }
+                    <ZooDesc> { text:"A parameter dragger" }
+                    <ZooGroup> {
+                        width: Fill, height: Fit,
+                        flow: Right,
+                        spacing: 10.0,
+                        align: { x: 0., y: 0.}
+                        <View> {
+                            width: Fill, height: Fit,
+                            flow: Down,
+                            <Slider> { text: "Default" }
+                            <Slider> { text: "min 0 to max 100", min: 0., max: 100. }
+                            <Slider> { text: "precision 7", precision: 4 }  // max precision
+                            <Slider> { text: "stepped 0.1", step: 0.1 }
+                        }
+                        <View> {
+                            width: Fill, height: Fit,
+                            flow: Down,
+                            <SliderBig> { text: "Default 0.2", default: 0.2 }
+                            <SliderBig> { text: "min -50 to max 50", min: -50, max: 50. }
+                            <SliderBig> { text: "precision 8", precision: 8 }   // when greater than 7, auto jump to 16 and won't changed
+                            <SliderBig> { text: "stepped 0.2", step: 0.2 }
+                        }
+                        <View> {
+                            width: Fill, height: Fit,
+                            flow: Down,
+                            <SliderAlt1> {
+                                text: "Colored",
+                                draw_slider: {
+                                    val_color_a: (#FFCC00),
+                                    val_color_b: #f00,
+                               }
+                            }
+                        }
+                    }
+```
+![slider](./slider.png)
+
+### Rotary slider
+
+The slider can not only be used in a straight line but also has a curved version. You can think of this circular slider as a vertical slider. This one is quite similar to the common slider but using different component name.   
+You can see the code from [github branch 08](https://github.com/acyanbird/makepad-start/tree/08-slider).
+
+![Rotary](./rotary.png)
+
+## Drop Down
+
+It seems that work without enum (and what is mean by databound?)
+
+We can define a drop down menu by directing using `<DropDown>` component:
+```rust
+                <ZooHeader> {
+                    title = {text:"<DropDown>"}
+                    <ZooDesc> {text:"DropDown control. This control currently needs to be databound which needs some plumbing. In this sample there is a binding context struct in the main app struct - which gets bound on app start - and updated during handle_actions."}
+                    <ZooGroup> {
+                        dropdown = <DropDown> {
+                            labels: ["Value One", "Value Two", "Thrice", "Fourth Value", "Option E", "Hexagons"],
+                            values: [ValueOne, ValueTwo, Thrice, FourthValue, OptionE, Hexagons]
+                        }
+                    }
+                }
+```
+
+It is quite straight forward to match display text label and values. But be careful, the expanded menu may be out of the windows and can't be reached.
+
+![out](./dropdown_out.png)
+
+So put a placeholder under it:
+
+```rust
+                <ZooHeader> {
+                    title = {text:"Place holder"}
+                    <ZooDesc> {text:"Place holder for drop down"}
+                    
+                }
+```
+
+We can get the index and label by using event_handle:
+
+```rust
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+        // Handle DropDown selection change
+        if let Some(selected) = self.ui.drop_down(id!(dropdown)).changed(&actions) {
+            log!("DROPDOWN SELECTED index {}", selected);
+            let selected_label = self.ui.drop_down(id!(dropdown)).selected_label();
+            log!("DROPDOWN SELECTED label {}", selected_label);
+        }
+```
+
+These codes means when the selection is changed, it will print out the selected label and index. Let's see the output:
+
+![0](./dropdown_select.png)
+![2](./dropdown2.png)
+
+```bash
+src/app.rs:602:13 - DROPDOWN SELECTED index 2
+src/app.rs:604:13 - DROPDOWN SELECTED label Thrice
+```
+
+## HTML and Markdown
+
+Makepad also support HTML and Markdown language. If you need to use them in your application, simply include them into correct component. But the link label is not working now, you can't open google by clicking the link. It won't be fixed in the future, so to implement by your own, You could also check [robius-open](https://github.com/project-robius/robius-open) project.
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<Html>"}
+                    <ZooDesc> {text:"HTML Widget"}
+                    <ZooGroup> {
+                        <Html> {
+                            width:Fill, height:Fit,
+                            body:"<H1>H1 Headline</H1><H2>H2 Headline</H2><H3>H3 Headline</H3><H4>H4 Headline</H4><H5>H5 Headline</H5><H6>H6 Headline</H6>This is <b>bold</b>&nbsp;and <i>italic text</i>.<sep><b><i>Bold italic</i></b>, <u>underlined</u>, and <s>strike through</s> text. <p>This is a paragraph</p> <code>A code block</code>. <br/> And this is a <a href='https://www.google.com/'>link</a><br/><ul><li>lorem</li><li>ipsum</li><li>dolor</li></ul><ol><li>lorem</li><li>ipsum</li><li>dolor</li></ol><br/> <blockquote>Blockquote</blockquote> <pre>pre</pre><sub>sub</sub><del>del</del>"
+                        }
+                    }
+                }
+
+                <ZooHeader> {
+                    title = {text:"<Markdown>"}
+                    <ZooDesc> {text:"Markdown"}
+                    <ZooGroup> {
+                        <Markdown> {
+                            width:Fill, height: Fit,
+                            body:"# Headline 1 \n ## Headline 2 \n ### Headline 3 \n #### Headline 4 \n This is standard text with a  \n\n line break a short ~~strike through~~ demo.\n\n *Italic text* \n\n **Bold text** \n\n - Bullet\n - Another bullet\n\n - Third bullet\n\n 1. Numbered list Bullet\n 2. Another list entry\n\n 3. Third list entry\n\n `Monospaced text`\n\n> This is a quote.\n\nThis is `inline code`.\n\n ```code block
+                            ```"
+                        }
+                    }
+                }
+```
+
+For now we will print url when you click it.
+
+```rust
+impl MatchEvent for App{
+    fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+        for action in actions.iter() {
+            if let HtmlLinkAction::Clicked { url, .. } = action.as_widget_action().cast() {
+                  //robius_open::Uri::new(&url).open() 
+                  log!("URL CLICKED: {}", url);
+            }
+        }
+```
+
+And these are following output:
+
+```bash
+src/app.rs:602:19 - URL CLICKED: https://www.google.com/
+```
+
+![html](./html.png)
+![markdown](./markdown.png)
+
+## Image
+
+Loading and display an image is similar as loading a specific font for text. We put [duck image](https://github.com/acyanbird/makepad-start/blob/11-image/resources/ducky.png) into resources foler, too. 
+
+```rust
+<ZooHeader> {
+                    title = {text:"<Image>"}
+                    <ZooDesc> {text:"A static inline image from a resource."}
+                    <ZooGroup> {
+                        height: Fit, width: Fill,
+                        spacing: (THEME_SPACE_2)
+                        scroll_bars: <ScrollBars> {}
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250, flow: Down,
+                                <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                            }
+                            <P> { text: "Default" }
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { height: Fill, source: dep("crate://self/resources/ducky.png" ), min_height: 100 }
+                            }
+                            <P> { text: "min_height: 100" } // TODO: get this to work correctly
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, source: dep("crate://self/resources/ducky.png" ), width_scale: 1.1 }
+                            }
+                            <P> { text: "width_scale: 1.5" } // TODO: get this to work correctly
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, height: Fill, source: dep("crate://self/resources/ducky.png"), fit: Stretch }
+                            }
+                            <P> { text: "fit: Stretch" }
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, height: Fill, source: dep("crate://self/resources/ducky.png" ), fit: Horizontal }
+                            }
+                            <P> { text: "fit: Horizontal" }
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, height: Fill, source: dep("crate://self/resources/ducky.png" ), fit: Vertical }
+                            }
+                            <P> { text: "fit: Vertical" }
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, height: Fill, source: dep("crate://self/resources/ducky.png" ), fit: Smallest }
+                            }
+                            <P> { text: "fit: Smallest" }
+                        }
+                        <View> {
+                            width: Fit, height: Fit, flow: Down,
+                            <View> {
+                                show_bg: true, draw_bg: { color: (THEME_COLOR_BG_CONTAINER)}, width: 125, height: 250,
+                                <Image> { width: Fill, height: Fill, source: dep("crate://self/resources/ducky.png" ), fit: Biggest }
+                            }
+                            <P> { text: "fit: Biggest" }
+                        }
+                    }
+                }
+```
+
+We need a view component that include image. This image could be stretch and fit to longest edge, shortest edge. Or fit into the vertical or the horizontal edge.
+
+![duck image](./duck_image.png)
+
+## Check box
+
+These include multiple nested views and checkbox components to demonstrate different checkbox modes. The check can also bind to event just like button.
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<CheckBox>"}
+                    <ZooDesc> {text:"Checkbox"}
+                    <ZooGroup> {
+                        height: Fit
+                        spacing: (THEME_SPACE_2)
+                        flow: Down,
+                        <H4> { text: "Output demo"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5}
+                            simplecheckbox = <CheckBox> {text:"Check me out!"}
+                            simplecheckbox_output = <Label> { text:"hmm" }
+                        }
+                        <H4> { text: "Standard Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBox> {text:"Check me out!"}
+                            <CheckBox> {text:"Check me out!"}
+                            <CheckBox> {text:"Check me out!"}
+                        }
+                        <H4> { text: "Toggle Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBoxToggle> {text:"Check me out!" }
+                            <CheckBoxToggle> {text:"Check me out!" }
+                            <CheckBoxToggle> {text:"Check me out!" }
+                        }
+                    }
+                }
+```
+
+Bind the checkbox in event. When the check box is clicked, label aside will changed.
+
+```rust
+    if let Some(check) = self.ui.check_box(id!(simplecheckbox)).changed(actions) {
+        log!("CHECK BUTTON CLICKED {} {}", self.counter, check);
+        self.counter += 1;
+        let lbl = self.ui.label(id!(simplecheckbox_output));
+        lbl.set_text(cx,&format!("{} {}" , self.counter, check));
+    }
+```
+![checkbox](./checkbox.png)
+
+We can customize checkbox, too. Using the [heart svg image](https://github.com/acyanbird/makepad-start/blob/12-checkbox/resources/Icon_Favorite.svg) we used in button.
+
+```rust
+<H4> { text: "Custom Icon Mode"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            spacing: (THEME_SPACE_1)
+                            align: { x: 0.0, y: 0.5}
+                            <CheckBoxCustom> {
+                                text:"Check me out!"
+                                draw_check: { check_type: None }
+                                draw_icon: {
+                                    color_active: #f00,
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+                            <CheckBoxCustom> {
+                                text:"Check me out!"
+                                draw_check: { check_type: None }
+                                draw_icon: {
+                                    svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                }
+                            }
+                        }
+```
+We can also change icon color by using color_active field.
+
+![cust-box](./customize_box.png)
+
+## Radio button
+
+This is special type of buttons, only one button in the group can be selected. The first two group of buttons are similar to check box. And the text and image itself can also be the clickable area.
+
+```rust
+<ZooHeader> {
+                    title = {text:"<RadioButton>"}
+                    <ZooDesc> {text:"Todo: List the different radio button templates."}
+                    <ZooGroup> {
+                        flow: Down,
+                        spacing: (THEME_SPACE_2)
+                        <H4> { text: "Default"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            radios_demo = <View> {
+                                spacing: (THEME_SPACE_2)
+                                width: Fit, height: Fit,
+                                radio1 = <RadioButton> { text: "Option 1" }
+                                radio2 = <RadioButton> { text: "Option 2" }
+                                radio3 = <RadioButton> { text: "Option 3" }
+                                radio4 = <RadioButton> { text: "Option 4" }
+                            }
+                        }
+
+                        <H4> { text: "Custom Radios"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            iconradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                spacing: (THEME_SPACE_2)
+                                flow: Down,
+
+                                radio1 = <RadioButtonCustom> {
+                                    text: "Option 1"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio2 = <RadioButtonCustom> {
+                                    text: "Option 2"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #0f0,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio3 = <RadioButtonCustom> {
+                                    text: "Option 3"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #0ff,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                                radio4 = <RadioButtonCustom> {
+                                    text: "Option 4"
+                                    icon_walk: {
+                                        width: 12.5, height: Fit,
+                                    }
+                                    draw_icon: {
+                                        color_active: #f00,
+                                        svg_file: dep("crate://self/resources/Icon_Favorite.svg"),
+                                    }
+                                }
+                            }
+                        }
+
+                        <H4> { text: "Text only"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            textonlyradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                flow: Right,
+                                spacing: (THEME_SPACE_2)
+                                radio1 = <RadioButtonTextual> { text: "Option 1" }
+                                radio2 = <RadioButtonTextual> { text: "Option 2" }
+                                radio3 = <RadioButtonTextual> { text: "Option 3" }
+                                radio4 = <RadioButtonTextual> { text: "Option 4" }
+                            }
+                        }
+
+
+                        <H4> { text: "Button Group"}
+                        <ButtonGroup> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            radiotabs_demo = <View> {
+                                width: Fit, height: Fit,
+                                radio1 = <RadioButtonTab> { text: "Option 1" }
+                                radio2 = <RadioButtonTab> { text: "Option 2" }
+                                radio3 = <RadioButtonTab> { text: "Option 3" }
+                                radio4 = <RadioButtonTab> { text: "Option 4" }
+                            }
+                        }
+
+                        <H4> { text: "Media"}
+                        <View> {
+                            height: Fit
+                            flow: Right
+                            align: { x: 0.0, y: 0.5 }
+                            mediaradios_demo = <View> {
+                                width: Fit, height: Fit,
+                                flow: Right,
+                                spacing: (THEME_SPACE_2)
+                                radio1 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio2 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio3 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                                radio4 = <RadioButtonImage> {
+                                    width: 50, height: 50,
+                                    media: Image,
+                                    image: <Image> { source: dep("crate://self/resources/ducky.png" ) }
+                                }
+                            }
+                        }
+                    }
+                }
+```
+
+Only one buttons is the group can be selected, so the event is used again to change the visibility. Or the button can only be selected but can't be cancelled.
+
+```rust
+    impl MatchEvent for App{
+        fn handle_actions(&mut self, cx: &mut Cx, actions:&Actions){
+            let ui = self.ui.clone();
+
+        ui.radio_button_set(ids!(radios_demo.radio1, radios_demo.radio2, radios_demo.radio3, radios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(radios_demo.radio1, radios_demo.radio2, radios_demo.radio3, radios_demo.radio4));
+
+        ui.radio_button_set(ids!(iconradios_demo.radio1, iconradios_demo.radio2, iconradios_demo.radio3, iconradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(iconradios_demo.radio1, iconradios_demo.radio2, iconradios_demo.radio3, iconradios_demo.radio4));
+
+        ui.radio_button_set(ids!(radiotabs_demo.radio1, radiotabs_demo.radio2, radiotabs_demo.radio3, radiotabs_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(radiotabs_demo.radio1, radiotabs_demo.radio2, radiotabs_demo.radio3, radiotabs_demo.radio4));
+
+        ui.radio_button_set(ids!(textonlyradios_demo.radio1, textonlyradios_demo.radio2, textonlyradios_demo.radio3, textonlyradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(textonlyradios_demo.radio1, textonlyradios_demo.radio2, textonlyradios_demo.radio3, textonlyradios_demo.radio4));
+
+        ui.radio_button_set(ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4))
+            .selected_to_visible(cx, &ui, actions, ids!(mediaradios_demo.radio1, mediaradios_demo.radio2, mediaradios_demo.radio3, mediaradios_demo.radio4));
+```
+
+We are using `ids!` instead of `id!` here.
+The `id!` macro is used to generate an identifier for a single component,  and `ids!` macro is used to generate a set of identifiers for multiple components.
+
+![radio buttons](./radio_buttons.png)
+
+## Slides View
+
+Makepad could easily build PPT like slides. The `<SlideChapter>` will set background into orange color, and `<Slide>` background is black.
+
+```rust
+                <ZooHeader> {
+                    title = {text:"<SlidesView>"}
+                    width: Fill, height: Fit,
+                    <ZooDesc> {text:"Slides View"}
+                    <View> {
+                        width: Fill, height: Fit,
+                        <SlidesView> {
+                            width: Fill, height: 400,
+
+                            <SlideChapter> {
+                                title = {text: "Hey!"},
+                                <SlideBody> {text: "This is the 1st slide. Use your right\ncursor key to show the next slide."}
+                            }
+
+                            <Slide> {
+                                title = {text: "Second slide"},
+                                <SlideBody> {text: "This is the 2nd slide. Use your left\ncursor key to show the previous slide."}
+                            }
+
+                        }
+                    }
+                }
+```
+
+The slide chapter:
+![slide chapter](./slide_chapter.png)
+Common slide:
+![common slide](./common_slide.png)
+
+## Animation
+
+We can play animation in Makepad. We use [typing animation](https://github.com/project-robius/robrix/blob/main/src/shared/typing_animation.rs) component in robrix. This animation is three dots bounsing in sine wave:
+
+![dot stop](./animation_stopped.png)
+
+We need to separate a new file to draw this animation.
+
+`typing_animation.rs`
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    pub TypingAnimation = {{TypingAnimation}} {
+        width: 48,
+        height: 24,
+        flow: Down,
+        show_bg: true,
+        draw_bg: {
+            color: #000
+            uniform freq: 5.0,  // Animation frequency
+            uniform phase_offset: 102.0, // Phase difference
+            uniform dot_radius: 2.5, // Dot radius
+            uniform thetime: 0.0,
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let amplitude = self.rect_size.y * 0.22;
+                let center_y = self.rect_size.y * 0.5;
+                // Create three circle SDFs
+                sdf.circle(
+                    self.rect_size.x * 0.25,    // dot will be at 1/4 of the width 
+                    amplitude * sin(self.thetime * self.freq) + center_y,   //  using time to calculate the y position
+                    self.dot_radius // dot radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.5, // dot will be at 1/2 of the width 
+                    amplitude * sin(self.thetime * self.freq + self.phase_offset) + center_y, 
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.75,    // dot will be at 3/4 of the width 
+                    amplitude * sin(self.thetime * self.freq + self.phase_offset * 2) + center_y, 
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                return sdf.result;
+            }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,
+    #[rust] next_frame: NextFrame,
+    #[rust] is_play: bool,  // flag to play or stop the animation
+}
+```
+
+We use the time to calculate y position of the dots. Three dots are printed in static x position and changing y position relates on time.
+
+So how can we start this animation? Well, we need to render 
+
+```rust
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        
+        if let Some(ne) = self.next_frame.is_event(event) {
+            let time = ((ne.time * 10.0).round() as u32 % 360) as f32;
+            self.draw_bg.set_uniform(cx, id!(thetime), &[time as f32]);
+            self.redraw(cx);    // redraw the widget
+            if !self.is_play {
+                return  // stop the animation
+            }
+            self.next_frame = cx.new_next_frame();
+        }
+
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+```
+
+We get the time and pass the uniform parameters into it. Then call the redraw of current component. Then it will check the is_play variable, if not playing directly return instead of renerding new next frame. By stopping render next frame, the whole animation will stop. The codes above basically is the main part of animation. Now let's implement the start and stop function.
+
+```rust
+impl TypingAnimationRef {
+    /// Starts animation of the bouncing dots.
+    pub fn animate(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = true;
+            inner.next_frame = cx.new_next_frame();
+        }
+    }
+    /// Stops animation of the bouncing dots.
+    pub fn stop_animation(&self) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = false;
+        }
+    }
+}
+```
+
+Now this little animation is completed! introduce it to the main program.
+
+Imports trait to use functions animate and stop_animation:
+```rust
+use makepad_widgets::*; // Import Makepad Widgets package
+use crate::typing_animation::TypingAnimationWidgetRefExt;    
+```
+
+Then define the component with a button to control play and stop:
+
+```rust
+                <ZooHeader> {
+                    title = {text:"Animation"}
+                    <ZooDesc> {text:"Typing animation"}
+                    <View> {
+                        width: Fill, 
+                        height: Fit,
+                        flow: Right,
+                        padding: 20,
+                        spacing: 20
+                    typing_animation = <TypingAnimation> {
+                        margin: {top: 1.1, left: -4 }
+                        padding: 0.0,
+                        draw_bg: {
+                            color: (#fff),
+                        }
+                        }
+                        typing_button = <Button> {
+                            text: "Start typing",
+                        }
+
+                    }
+                }
+```
+
+Register the context and define a bool variable to control playing:
+```rust
+
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust] counter: usize,  // use rust instead of live for counter
+    #[rust] typing: bool    // default false
+}
+
+fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+        crate::typing_animation::live_design(cx);
+
+    }
+```
+
+Then change the state by clicking the button:
+```rust
+        if self.ui.button(id!(typing_button)).clicked(&actions) {
+            // log!("typing BUTTON CLICKED {}", self.typing);
+            let typing_animation = self.ui.typing_animation(id!(typing_animation));
+            let type_button = self.ui.button(id!(typing_button));
+            if !self.typing {
+                // false to true, stop animation
+                typing_animation.animate(cx);
+                self.typing = !self.typing;
+                type_button.set_text(cx, "Stop typing");
+
+            } else {
+                // true to false, start animation
+                typing_animation.stop_animation();
+                self.typing = !self.typing;
+                type_button.set_text(cx, "Start typing");
+            }
+        }
+```
+![moving](./animation_moving.png)
