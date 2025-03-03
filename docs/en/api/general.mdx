@@ -2,28 +2,10 @@
 
 ## app_main!(App);
 
-The `app_main!` macro is the entry point for your application. It takes a single argument, the type of your application struct. This struct must implement the `AppMain` trait.
+The `app_main!` macro is the entry point for your application. This struct must implement the `AppMain` trait.
 
 ## live_design!\{Live DSL code\}
 
-The `live_design!` macro is used to define a live design. It takes a single argument, the code for the live design.
+The `live_design!` macro is used to define a live design code, which is a DSL for defining UIs.
 
-```rust
-live_design!{
-    use link::theme::*;
-    use link::shaders::*;
-    use link::widgets::*;
-
-    use crate::shared::styles::*;
-
-    App = {{App}} {
-        ui: <Window> {
-            window: {inner_size: vec2(1280, 800)},
-            body: {
-                <Lable> {
-                    text: "Hello World",
-                }
-            }
-        }
-    }
-}
+More Live DSL code details can be found in the [Live DSL](/guide/live-DSL/index) guide.
