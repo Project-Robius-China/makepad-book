@@ -115,7 +115,7 @@ Run this project by
 
 You could see the output:
 
-![basic view](./basic-view.png)  
+![basic view](./images/basic-view.png)  
 
 Let's explain the code structure, you don't need to understand them right now:
 
@@ -157,7 +157,7 @@ live_design! {
     }
 }
 ```
-![darkred-bg](./darkred_bg.png)  
+![darkred-bg](./images/darkred_bg.png)  
 Try to change whatever color you want by yourself!  
 
 And the [code](https://github.com/acyanbird/makepad-start/tree/01-basic-window) is available.
@@ -187,7 +187,7 @@ ui: <Window> {
             },
         }
 ```
-![change title](./change_title.png)
+![change title](./images/change_title.png)
 And the [code](https://github.com/acyanbird/makepad-start/tree/02-change-title-and-color) is available.
 
 ## Text
@@ -295,7 +295,7 @@ A title and description is needed for every group of components, let's define th
                 }
 ```
 
-![text](./text.png)
+![text](./images/text.png)
 The code is available at [this branch](https://github.com/acyanbird/makepad-start/tree/03-add-text)
 
 ## Buttons and Typography
@@ -361,7 +361,7 @@ Then we continue define buttons and styles as text.
                 }
 ```
 In this case, flow for buttons is right so you could see these buttons are align in row. THEME_SPACE_2 is a constant. It is defined in the theme_mobile_light.rs file from makepad widget. 
-![buttons&typo](./buttons.png)
+![buttons&typo](./images/buttons.png)
 
 Code is available at [branch 04](https://github.com/acyanbird/makepad-start/tree/04-buttons-and-typography)
 
@@ -493,7 +493,7 @@ Let's define a `ZooHeader` component that includes various nested views and desc
                 }
 ```
 
-![nested-views](./nested-views.png)
+![nested-views](./images/nested-views.png)
 The bigger view inside smaller view also use scroll bar component to move.
 
 The code is available [here](https://github.com/acyanbird/makepad-start/tree/05-view).
@@ -563,7 +563,7 @@ Let's define textinput boxes above:
 ```
 Two text input boxes are defined, and the change of second one will also change the label aside. The label will show the content of box and counter variable which count user input. Take these two code snippets together, you will know how event works. 
 
-![text](./interaction-text.png)
+![text](./images/interaction-text.png)
 
 ### Buttons
 
@@ -667,7 +667,7 @@ Now let's handle the event.
 The counter is used to count the total click times, it is shared by all the buttons and text box. If you want to set counter seperatly, you could use different variable.
 
 
-![b](./interact-buttons.png)
+![b](./images/interact-buttons.png)
 
 Makepad can treat with hover too. Let's see how the text color changed when cursor above the button:
 
@@ -690,7 +690,7 @@ Makepad can treat with hover too. Let's see how the text color changed when curs
 
 No need to change the match event for this one. `self.hover` is a bool value that make text color changed when the cursor is above. Also when the button is clicked, the background color and text color also changed.
 
-![hover](./hover.png)
+![hover](./images/hover.png)
 
 It's a bit uncleared but the text color change to orange instead of white when it is hover.
 
@@ -734,7 +734,7 @@ We introduce text display at very beginning, but now for the more advance use~ B
                 }
 ```
 
-![fonts](./fonts.png)
+![fonts](./images/fonts.png)
 
 The font use in example is available [here](https://github.com/acyanbird/makepad-start/blob/07-text-with-font-and-color/resources/XITSOneText-BoldItalic.ttf). You can change it by your own but not all of the font support well. For the final line, we use same way as `draw_bg` in section More Views. Just consider every single letter as a color block, but mix them horizontally instead of vertically.
 
@@ -785,14 +785,14 @@ There are several parameters can define. Using draw_slider define the left and r
                         }
                     }
 ```
-![slider](./slider.png)
+![slider](./images/slider.png)
 
 ### Rotary slider
 
 The slider can not only be used in a straight line but also has a curved version. You can think of this circular slider as a vertical slider. This one is quite similar to the common slider but using different component name.   
 You can see the code from [github branch 08](https://github.com/acyanbird/makepad-start/tree/08-slider).
 
-![Rotary](./rotary.png)
+![Rotary](./images/rotary.png)
 
 ## Drop Down
 
@@ -814,7 +814,7 @@ We can define a drop down menu by directing using `<DropDown>` component:
 
 It is quite straight forward to match display text label and values. But be careful, the expanded menu may be out of the windows and can't be reached.
 
-![out](./dropdown_out.png)
+![out](./images/dropdown_out.png)
 
 So put a placeholder under it:
 
@@ -840,8 +840,8 @@ We can get the index and label by using event_handle:
 
 These codes means when the selection is changed, it will print out the selected label and index. Let's see the output:
 
-![0](./dropdown_select.png)
-![2](./dropdown2.png)
+![0](./images/dropdown_select.png)
+![2](/images/dropdown2.png)
 
 ```bash
 src/app.rs:602:13 - DROPDOWN SELECTED index 2
@@ -896,8 +896,8 @@ And these are following output:
 src/app.rs:602:19 - URL CLICKED: https://www.google.com/
 ```
 
-![html](./html.png)
-![markdown](./markdown.png)
+![html](./images/html.png)
+![markdown](./images/markdown.png)
 
 ## Image
 
@@ -981,7 +981,7 @@ Loading and display an image is similar as loading a specific font for text. We 
 
 We need a view component that include image. This image could be stretch and fit to longest edge, shortest edge. Or fit into the vertical or the horizontal edge.
 
-![duck image](./duck_image.png)
+![duck image](./images/duck_image.png)
 
 ## Check box
 
@@ -1037,7 +1037,7 @@ Bind the checkbox in event. When the check box is clicked, label aside will chan
         lbl.set_text(cx,&format!("{} {}" , self.counter, check));
     }
 ```
-![checkbox](./checkbox.png)
+![checkbox](./images/checkbox.png)
 
 We can customize checkbox, too. Using the [heart svg image](https://github.com/acyanbird/makepad-start/blob/12-checkbox/resources/Icon_Favorite.svg) we used in button.
 
@@ -1067,7 +1067,7 @@ We can customize checkbox, too. Using the [heart svg image](https://github.com/a
 ```
 We can also change icon color by using color_active field.
 
-![cust-box](./customize_box.png)
+![cust-box](./images/customize_box.png)
 
 ## Radio button
 
@@ -1239,7 +1239,7 @@ Only one buttons is the group can be selected, so the event is used again to cha
 We are using `ids!` instead of `id!` here.
 The `id!` macro is used to generate an identifier for a single component,  and `ids!` macro is used to generate a set of identifiers for multiple components.
 
-![radio buttons](./radio_buttons.png)
+![radio buttons](./images/radio_buttons.png)
 
 ## Slides View
 
@@ -1271,15 +1271,15 @@ Makepad could easily build PPT like slides. The `<SlideChapter>` will set backgr
 ```
 
 The slide chapter:
-![slide chapter](./slide_chapter.png)
+![slide chapter](./images/slide_chapter.png)
 Common slide:
-![common slide](./common_slide.png)
+![common slide](./images/common_slide.png)
 
 ## Animation
 
 We can play animation in Makepad. We use [typing animation](https://github.com/project-robius/robrix/blob/main/src/shared/typing_animation.rs) component in robrix. This animation is three dots bounsing in sine wave:
 
-![dot stop](./animation_stopped.png)
+![dot stop](./images/animation_stopped.png)
 
 We need to separate a new file to draw this animation.
 
@@ -1460,4 +1460,4 @@ Then change the state by clicking the button:
             }
         }
 ```
-![moving](./animation_moving.png)
+![moving](./images/animation_moving.png)

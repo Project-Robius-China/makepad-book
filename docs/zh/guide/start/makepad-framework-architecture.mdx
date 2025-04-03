@@ -117,7 +117,7 @@ pub struct DrawColor {
 
 ```
 
-MPSL 代码是可以嵌入到 Live DSL 代码中的。其中 `DrawColor` 的字段 `draw_super` 类型 DrawQuad ，代表该结构体继承了 `DrawQuad` 的行为 （为这个字段实现了 `deref` trait）。这算是一个 Rust/C 中的技巧，算是一种行为代理。`DrawQuad` 是 Makepad 框架中 draw crate 提供的功能，代表了绘制人意四边形的基本着色器。
+MPSL 代码是可以嵌入到 Live DSL 代码中的。其中 `DrawColor` 的字段 `draw_super` 类型 DrawQuad ，代表该结构体继承了 `DrawQuad` 的行为 （为这个字段实现了 `deref` trait）。这算是一个 Rust/C 中的技巧，算是一种行为代理。`DrawQuad` 是 Makepad 框架中 draw crate 提供的功能，代表了绘制任意四边形的基本着色器。
 
 :::info 说明
 
