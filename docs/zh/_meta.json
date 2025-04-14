@@ -5,9 +5,9 @@
         "activeMatch": "/guide/"
     },
     {
-        "text": "online-salon",
-        "link": "/online-salon/index",
-        "activeMatch": "/online-salon/"
+        "text": "weekly",
+        "link": "/weekly/index",
+        "activeMatch": "/weekly/"
     },
     {
         "text": "workshop",

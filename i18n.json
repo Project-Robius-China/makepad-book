@@ -18,5 +18,9 @@
     "contribute": {
         "zh": "贡献",
         "en": "Contribute"
+    },
+    "weekly": {
+        "zh": "每周快讯",
+        "en": "This week in Makepad"
     }
 }

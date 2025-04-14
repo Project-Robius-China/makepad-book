@@ -5,6 +5,11 @@
         "activeMatch": "/guide/"
     },
     {
+        "text": "weekly",
+        "link": "/weekly/index",
+        "activeMatch": "/weekly/"
+    },
+    {
         "text": "workshop",
         "link": "/workshop/index",
         "activeMatch": "/workshop/"
