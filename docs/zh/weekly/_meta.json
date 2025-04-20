@@ -1,3 +1,19 @@
 [
-    "index"
+    "index",
+    {
+        "type": "dir",
+        "name": "makepad",
+        "label": "Makepad"
+    },
+    {
+        "type": "dir",
+        "name": "robrix",
+        "label": "Robrix"
+    },
+    {
+        "type": "dir",
+        "name": "moly",
+        "label": "Moly"
+    }
+
 ]
