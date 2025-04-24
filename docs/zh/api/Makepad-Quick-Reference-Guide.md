@@ -643,7 +643,7 @@ Button = {{Button}} {
 
 ### **Makepad Live DSL 速查手册 (高级用法补充)**
 
-#### **`<View>` / `<ViewBase>` 及其变体**
+#### `<View>` / `<ViewBase>` 及其变体
 
 *   **高级用法:**
     *   **自定义背景 Shader:** 直接在 `draw_bg` 中编写 `fn pixel` 或 `fn vertex` 来创建复杂的背景效果、渐变、图案或响应状态的视觉变化。
@@ -714,7 +714,7 @@ Button = {{Button}} {
 2.  创建自定义版本的 Widget，并在其内部 `live_design!` 定义中调整结构或使用带有特定 `event_order` 的 `<View>`。
 
 
-#### **`<Label>`**
+#### `<Label>`
 
 *   **高级用法:**
     *   **自定义文本 Shader:** 在 `draw_text` 中覆盖 `fn get_color` 或 `fn pixel` 来实现文本颜色渐变、特殊效果或基于状态的颜色变化。
@@ -735,7 +735,7 @@ Button = {{Button}} {
     }
     ```
 
-#### **`<Button>`**
+#### `<Button>`
 
 *   **高级用法:**
     *   **完全自定义外观:** 覆盖 `draw_bg`, `draw_text`, `draw_icon` 中的 `fn pixel` 或 `fn get_color`，可以完全改变按钮的外观和状态反馈。
@@ -781,7 +781,7 @@ Button = {{Button}} {
     }
     ```
 
-#### **`<TextInput>`**
+#### `<TextInput>`
 
 *   **高级用法:**
     *   **自定义外观:** 覆盖 `draw_bg`, `draw_text`, `draw_cursor`, `draw_selection` 来完全控制输入框的视觉样式，包括背景、边框、光标、选区高亮等。
@@ -792,7 +792,7 @@ Button = {{Button}} {
 
 *   **示例 (自定义背景和光标):** (参考文档中的 Advanced 示例)
 
-#### **`<CheckBox>` / `<Toggle>`**
+#### `<CheckBox>` / `<Toggle>`
 
 *   **高级用法:**
     *   **自定义标记:** 覆盖 `draw_bg` 中的 `fn pixel`，可以绘制任意形状或图标来代替默认的勾选标记、圆形或开关滑块。`check_type: None` 可以完全移除默认绘制，让你用 `draw_icon` 或其他子 Widget 来表示状态。
@@ -826,7 +826,7 @@ Button = {{Button}} {
     }
     ```
 
-#### **`<RadioButton>`**
+#### `<RadioButton>`
 
 *   **高级用法:**
     *   **自定义标记/外观:** 类似于 CheckBox，可以覆盖 `draw_bg` 的 `fn pixel` 来创建自定义的单选按钮外观（例如，不同的选中标记、背景形状）。`radio_type: Tab` 用于创建标签页样式的单选按钮。
@@ -857,7 +857,7 @@ Button = {{Button}} {
     }
     ```
 
-#### **`<Slider>`**
+#### `<Slider>`
 
 *   **高级用法:**
     *   **自定义外观:** 覆盖 `draw_bg` 的 `fn pixel` 来完全改变滑块轨道和滑块手柄的外观，包括形状、颜色、渐变等。可以使用 `slide_pos` (0.0-1.0) 实例变量来确定绘制位置。
@@ -867,7 +867,7 @@ Button = {{Button}} {
 
 *   **示例 (自定义 Rotary 外观):** (参考文档中的 RotarySolid 示例)
 
-#### **`<DropDown>`**
+#### `<DropDown>`
 
 *   **高级用法:**
     *   **自定义外观:** 覆盖 `draw_bg` 和 `draw_text` 来改变按钮本身的样式。
@@ -901,7 +901,7 @@ Button = {{Button}} {
     }
     ```
 
-#### **`<Image>` / `<Icon>` / `<ImageBlend>`**
+#### `<Image>` / `<Icon>` / `<ImageBlend>`
 
 *   **高级用法:**
     *   **自定义 Shader:** 覆盖 `draw_bg` (Image) 或 `draw_icon` (Icon) 的 `fn pixel` 来应用滤镜、颜色调整、混合效果或其他图像处理。
@@ -910,7 +910,7 @@ Button = {{Button}} {
 
 *   **示例 (ImageBlend 切换):** (参考文档中的 ImageBlend 示例和 App 代码)
 
-#### **`<PortalList>` / `<PortalList2>`**
+#### `<PortalList>` / `<PortalList2>`
 
 *   **高级用法:**
     *   **多种模板:** 在 `live_design!` 中定义多个不同的列表项模板 (如 `ListItemTypeA`, `ListItemTypeB`)，然后在 Rust 的 `next_visible_item` 循环中，根据数据决定为每个 `item_id` 调用 `list.item(cx, item_id, live_id!(ListItemTypeA))` 还是 `list.item(cx, item_id, live_id!(ListItemTypeB))`。
@@ -918,7 +918,7 @@ Button = {{Button}} {
     *   **下拉刷新:** 结合 `max_pull_down` 和对 `first_scroll > 0.0` 的检测来实现下拉刷新交互。
     *   **保持项状态:** 如果列表项自身有复杂状态（如图标加载、动画），确保在 `item()` 返回已存在项时，这些状态被保留。如果使用了 `reuse_items: true`，则需要在获取到重用项时重置其状态。
 
-#### **`<Dock>` / `<Splitter>` / `<Tab>` / `<TabBar>`**
+#### `<Dock>` / `<Splitter>` / `<Tab>` / `<TabBar>`
 
 *   **高级用法:**
     *   **动态添加/移除 Tab:** 在 Rust 代码中修改 `Dock` 的 `dock_items` 状态（添加/移除 `Tab` 和 `Tabs` 定义），然后调用 `redraw(cx)`。需要仔细管理 `LiveId`。
@@ -927,7 +927,7 @@ Button = {{Button}} {
     *   **自定义 Splitter 外观:** 覆盖 `Splitter` 的 `draw_bg` 样式。
     *   **保存/加载布局:** 序列化/反序列化 `Dock` 的 `dock_items` `HashMap` 来保存和恢复用户自定义的布局。需要处理 `LiveId` 冲突（如 PR 中所示）。
 
-#### **`<Html>` / `<Markdown>` / `<TextFlow>`**
+#### `<Html>` / `<Markdown>` / `<TextFlow>`
 
 *   **高级用法:**
     *   **自定义样式:** 覆盖 `draw_normal`, `draw_italic`, `draw_bold` 等 `DrawText2` 属性，以及 `draw_block` (`DrawFlowBlock`) 的颜色和 `fn pixel` 来改变渲染样式。
@@ -935,7 +935,7 @@ Button = {{Button}} {
     *   **自定义链接:** 覆盖 `link: <MyLink>` 来使用自定义的链接组件（需要继承自 `LinkLabel` 或 `Button`）。
     *   **交互式元素:** 在 `Html` 或 `Markdown` 中嵌入自定义 Widget（如 `<Button>`），并在 Rust 中处理它们的事件。这通常需要在 `draw_walk` 中手动处理自定义标签。
 
-#### **`<Modal>` / `<PopupNotification>`**
+#### `<Modal>` / `<PopupNotification>`
 
 *   **高级用法:**
     *   **自定义背景:** 覆盖 `Modal` 的 `bg_view` 或 `PopupNotification` 的 `draw_bg` 来改变背景外观（例如，不同的模糊效果、颜色或完全透明）。
@@ -944,14 +944,14 @@ Button = {{Button}} {
     *   **条件打开/关闭:** 在 Rust 中根据应用逻辑调用 `open(cx)` 和 `close(cx)`。
     *   **处理内部动作:** 在父 Widget 的 `handle_actions` 中监听 Modal/Popup 内容区域发出的动作。
 
-#### **`<AdaptiveView>`**
+#### `<AdaptiveView>`
 
 *   **高级用法:**
     *   **自定义选择器:** 使用 `set_variant_selector` 提供复杂的逻辑来根据多种因素（不仅仅是屏幕尺寸，还可以是平台、设备特性、应用状态等）选择要显示的视图变体。
     *   **状态保持:** 设置 `retain_unused_variants: true` 来保留非活动视图的状态，避免在切换回来时重新初始化。需要注意内存使用。
     *   **嵌套 AdaptiveView:** 可以嵌套使用以实现更复杂的响应式布局。
 
-#### **`<CachedWidget>`**
+#### `<CachedWidget>`
 
 *   **高级用法:**
     *   **共享复杂状态:** 用于需要在 UI 不同部分显示但逻辑上是同一个实例的 Widget（例如，一个全局的音乐播放器控制条）。

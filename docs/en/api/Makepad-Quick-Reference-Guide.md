@@ -653,10 +653,9 @@ Therefore:
 
 ### **Makepad Live DSL Quick Reference (Advanced Usage Supplement)**
 
-#### **`<View>` / `<ViewBase>` and Variants**
+#### `<View>` / `<ViewBase>` and Variants
 
 - **Advanced Usage:**
-    
     - **Custom Background Shader:** Write `fn pixel` or `fn vertex` directly in `draw_bg` to create complex background effects, gradients, patterns, or visual changes responding to state.
     - **Optimization (`optimize: Texture` or `DrawList`):** For `View`s containing a lot of static or infrequently changing content, can significantly improve performance. `Texture` mode draws content to a texture, `DrawList` mode caches draw commands.
     - **Nesting & Complex Layout:** Combine different `flow`, `align`, `spacing`, `padding`, `margin`, and `Size` modes (`Fill`, `Fit`, `Fixed`) to build complex, responsive layout structures.
@@ -725,7 +724,7 @@ If you need fine-grained control over event order for child elements of a specif
 1. Wrap those child elements in a `<View>` and set that `<View>`'s `event_order`.
 2. Create a custom version of the Widget and adjust its structure or use `<View>` with specific `event_order` in its internal `live_design!` definition.
 
-#### **`<Label>`**
+#### `<Label>`
 
 - **Advanced Usage:**
     
@@ -748,7 +747,7 @@ If you need fine-grained control over event order for child elements of a specif
     ```
     
 
-#### **`<Button>`**
+#### `<Button>`
 
 - **Advanced Usage:**
     
@@ -797,7 +796,7 @@ If you need fine-grained control over event order for child elements of a specif
     ```
     
 
-#### **`<TextInput>`**
+#### `<TextInput>`
 
 - **Advanced Usage:**
     
@@ -809,7 +808,7 @@ If you need fine-grained control over event order for child elements of a specif
 - **Example (Custom Background and Cursor):** (see Advanced example in documentation)
     
 
-#### **`<CheckBox>` / `<Toggle>`**
+#### `<CheckBox>` / `<Toggle>`
 
 - **Advanced Usage:**
     
@@ -845,7 +844,7 @@ If you need fine-grained control over event order for child elements of a specif
     ```
     
 
-#### **`<RadioButton>`**
+#### `<RadioButton>`
 
 - **Advanced Usage:**
     
@@ -879,7 +878,7 @@ If you need fine-grained control over event order for child elements of a specif
     ```
     
 
-#### **`<Slider>`**
+#### `<Slider>`
 
 - **Advanced Usage:**
     
@@ -890,7 +889,7 @@ If you need fine-grained control over event order for child elements of a specif
 - **Example (Custom Rotary Appearance):** (see RotarySolid example in documentation)
     
 
-#### **`<DropDown>`**
+#### `<DropDown>`
 
 - **Advanced Usage:**
     
@@ -926,7 +925,7 @@ If you need fine-grained control over event order for child elements of a specif
     ```
     
 
-#### **`<Image>` / `<Icon>` / `<ImageBlend>`**
+#### `<Image>` / `<Icon>` / `<ImageBlend>`
 
 - **Advanced Usage:**
     
@@ -936,7 +935,7 @@ If you need fine-grained control over event order for child elements of a specif
 - **Example (ImageBlend Switch):** (see ImageBlend example in documentation and App code)
     
 
-#### **`<PortalList>` / `<PortalList2>`**
+#### `<PortalList>` / `<PortalList2>`
 
 - **Advanced Usage:**
     - **Multiple Templates:** Define multiple different list item templates (like `ListItemTypeA`, `ListItemTypeB`) in `live_design!`, then in Rust's `next_visible_item` loop, decide based on data whether to call `list.item(cx, item_id, live_id!(ListItemTypeA))` or `list.item(cx, item_id, live_id!(ListItemTypeB))` for each `item_id`.
@@ -944,7 +943,7 @@ If you need fine-grained control over event order for child elements of a specif
     - **Pull-to-Refresh:** Combine `max_pull_down` and detection of `first_scroll > 0.0` to implement pull-to-refresh interaction.
     - **Preserving Item State:** If list items have complex state themselves (like icon loading, animation), ensure state is preserved when `item()` returns existing item. If using `reuse_items: true`, need to reset state when reused item is obtained.
 
-#### **`<Dock>` / `<Splitter>` / `<Tab>` / `<TabBar>`**
+#### `<Dock>` / `<Splitter>` / `<Tab>` / `<TabBar>`
 
 - **Advanced Usage:**
     - **Dynamic Add/Remove Tabs:** Modify `Dock`'s `dock_items` state in Rust code (add/remove `Tab` and `Tabs` definitions), then call `redraw(cx)`. Need careful management of `LiveId`.
@@ -953,7 +952,7 @@ If you need fine-grained control over event order for child elements of a specif
     - **Custom Splitter Appearance:** Override `Splitter`'s `draw_bg` style.
     - **Save/Load Layout:** Serialize/deserialize `Dock`'s `dock_items` `HashMap` to save and restore user-customized layout. Need to handle `LiveId` conflicts (as shown in PR).
 
-#### **`<Html>` / `<Markdown>` / `<TextFlow>`**
+#### `<Html>` / `<Markdown>` / `<TextFlow>`
 
 - **Advanced Usage:**
     - **Custom Styling:** Override `draw_normal`, `draw_italic`, `draw_bold` and other `DrawText2` properties, as well as `draw_block` (`DrawFlowBlock`) colors and `fn pixel` to change rendering style.
@@ -961,7 +960,7 @@ If you need fine-grained control over event order for child elements of a specif
     - **Custom Links:** Override `link: <MyLink>` to use custom link component (needs to inherit from `LinkLabel` or `Button`).
     - **Interactive Elements:** Embed custom Widgets (like `<Button>`) in `Html` or `Markdown`, and handle their events in Rust. This typically requires manual handling of custom tags in `draw_walk`.
 
-#### **`<Modal>` / `<PopupNotification>`**
+#### `<Modal>` / `<PopupNotification>`
 
 - **Advanced Usage:**
     - **Custom Background:** Override `Modal`'s `bg_view` or `PopupNotification`'s `draw_bg` to change background appearance (e.g., different blur effect, color, or fully transparent).
@@ -970,14 +969,14 @@ If you need fine-grained control over event order for child elements of a specif
     - **Conditional Open/Close:** Call `open(cx)` and `close(cx)` in Rust based on application logic.
     - **Handle Internal Actions:** Listen for actions emitted from Modal/Popup content area in parent Widget's `handle_actions`.
 
-#### **`<AdaptiveView>`**
+#### `<AdaptiveView>`
 
 - **Advanced Usage:**
     - **Custom Selector:** Use `set_variant_selector` to provide complex logic to select view variant based on multiple factors (not just screen size, but also platform, device features, application state).
     - **State Retention:** Set `retain_unused_variants: true` to preserve non-active view state, avoiding re-initialization when switching back. Be mindful of memory usage.
     - **Nested AdaptiveView:** Can be nested for more complex responsive layouts.
 
-#### **`<CachedWidget>`**
+#### `<CachedWidget>`
 
 - **Advanced Usage:**
     - **Sharing Complex State:** Used for Widgets that need to be displayed in different parts of UI but are logically the same instance (e.g., a global music player control bar).
