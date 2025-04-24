@@ -22,5 +22,13 @@
     "weekly": {
         "zh": "每周快讯",
         "en": "This week in Our Team"
+    },
+    "commands": {
+        "zh": "命令",
+        "en": "Commands"
+    },
+    "apiOverview": {
+        "zh": "API 概览",
+        "en": "API Overview"
     }
 }

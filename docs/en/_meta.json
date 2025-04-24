@@ -5,14 +5,14 @@
         "activeMatch": "/guide/"
     },
     {
+        "text": "API",
+        "link": "/api/index",
+        "activeMatch": "/api/"
+    },
+    {
         "text": "weekly",
         "link": "/weekly/index",
         "activeMatch": "/weekly/"
-    },
-    {
-        "text": "workshop",
-        "link": "/workshop/index",
-        "activeMatch": "/workshop/"
     },
     {
         "text": "examples",
