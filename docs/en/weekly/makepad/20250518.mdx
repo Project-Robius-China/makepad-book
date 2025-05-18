@@ -1,0 +1,69 @@
+---
+date: 2025-05-18
+sidebar: false
+---
+
+# Makepad 1.0 Released
+
+> Author: AlexZhang
+
+We are thrilled to finally announce the first public release of Makepad!
+
+Makepad ([https://makepad.nl](https://makepad.nl/)) is a UI framework written in Rust. It is designed to improve performance—relying almost entirely on the GPU for rendering. It features a novel styling system based on the idea of using shaders to adjust the look and feel of applications. To this end, it also features a custom DSL, including a shader language that compiles to multiple graphics backends.
+
+A major feature of Makepad's DSL is live UI editing: Makepad applications listen for changes to their DSL source code and update themselves at runtime to reflect the new code. This allows developers to adjust their application's layout and styling without going through an expensive recompilation step for each change.
+
+Makepad currently works on all major native platforms (OS X, Windows, Linux, iOS, Android), as well as on the web via WASM builds.
+
+The Makepad technology stack has the freedom and performance of a game engine. As a result, you can build very complex and large applications where you would quickly run into performance issues when using HTML. Additionally, Makepad allows you to write your own shaders.
+
+Makepad applications can also run as native applications without requiring a heavy wrapper like Electron. It's ideal for anyone who truly intends to build complex applications and easily deploy cross-platform with a single codebase. Makepad is perfect for building complex applications like Photoshop.
+
+Makepad 1.0 has a new tutorial to help you get started quickly: [https://publish.obsidian.md/makepad-docs/Tutorials/Image+Viewer/0+-+Introduction](https://publish.obsidian.md/makepad-docs/Tutorials/Image+Viewer/0+-+Introduction)
+
+Currently, Makepad has two real-world flagship applications:
+
+- Robrix: A Rust Matrix client https://github.com/project-robius/robrix
+- Moly: A Rust AI LLM client https://github.com/moxin-org/moly
+
+Looking forward, our goal is to release regularly from now on, so Makepad will get better over time.
+
+Online UI Zoo Demo: https://makepad.nl/makepad-example-ui-zoo/index.html
+
+## Some Reactions from the Community
+
+- [Hacker News](https://news.ycombinator.com/item?id=43971829)
+- [Reddit](https://www.reddit.com/r/rust/comments/1kllldg/makepad_10_rust_ui_framework/?share_id=N87dZDg4EYfGXcwgR5Uvd&utm_content=1&utm_medium=ios_app&utm_name=ioscss&utm_source=share&utm_term=1)
+
+1. While Makepad 1.0 represents an important milestone, further development is crucial to fully realize its potential. Future areas of focus may include:
+    
+    - Accessibility features: Implementing robust accessibility support is essential for inclusivity and widespread adoption.
+    - Agent AI integration: Exploring integration with agent AI frameworks will position Makepad at the forefront of emerging technologies.
+    - IDE customization: Expanding IDE customization options, particularly support for various keyboard mappings (e.g., Vim), will cater to a wider range of developer preferences.
+    - Real-world applications and community growth: Encouraging the development of more real-world applications and fostering a growing community will be key to long-term success.
+2. Regarding font glyphs, comments primarily focused on Makepad's font rendering, font support, and related issues across different platforms.
+    
+    - Some users pointed out that Makepad's text rendering is poor with small fonts because it lacks font hinting, resulting in unclear display at low resolutions.
+    - The web version currently only supports Latin fonts; Japanese, Korean, and emoji characters cannot be displayed properly. The desktop version supports more fonts (like Noto Emoji), but these aren't integrated into the web version, possibly due to a bug.
+    - The web version doesn't support IME (Input Method Editor), while the desktop version does, but the IME cursor area isn't correctly passed to the operating system, causing the system to render its own input box with inaccurate positioning.
+    - Official response: Makepad uses SDF (Signed Distance Fields) to render glyphs, which allows reuse of glyphs at different resolutions, reducing memory usage and improving speed, but sacrificing rendering quality, especially at low resolutions.
+    - Emoji and Chinese fonts are actually supported, but due to the 10 MB size limit for Rust crates, they couldn't all be packaged for release. The team initially thought fonts could be published as part of the crate. Then we realized this was a bad idea, but didn't have enough time to set up content that could be loaded from elsewhere. We didn't want to delay the release, so we decided to include a small subset of fonts in the crate for the 1.0 release and defer the proper solution to 1.1.
+    - The Makepad team also acknowledges the limitations in IME and font support and plans to fix these issues in the next version.
+3. The Makepad team chose a custom DSL and shader language instead of directly using wgpu, mainly because wgpu wasn't mature when the project started, and the switching cost is high.
+    
+    - A Makepad co-founder replied that when Makepad was initially developed, wgpu wasn't ready and couldn't meet their needs.
+    - Although switching to wgpu has been discussed, since the current solution works well and the team has many other priorities, they haven't switched yet.
+    - Adopting wgpu would require rewriting all existing shader code and would significantly increase compilation time, which is detrimental to development efficiency. But they will likely reconsider the decision to use wgpu in the near future.
+    - Some users added that even large Rust UI/game engines like Bevy find wgpu not mature enough, so some teams opt for custom solutions.
+    - Others discussed that WGSL shaders supported by wgpu can be transpiled to GLSL using tools (like naga/naga-cli), but this doesn't completely solve compatibility and development experience issues.
+4. Commenters believe that Makepad is currently "not truly usable" on the web, mainly because its pure canvas rendering approach brings serious limitations, particularly unsuitable for general web applications.
+    
+    - The commenter points out that Makepad uses pure canvas rendering on the web, which is essentially similar to a game engine. While suitable for technical demos and some games, it has significant limitations for most web applications.
+    - Key issues include:
+        - Basic web functionalities like links, scrolling, and text handling cannot be implemented as naturally as with DOM, greatly diminishing the experience.
+        - Poor support for multilingual text, especially the current lack of multilingual and IME/text composition support on the web.
+        - Completely invisible to accessibility technologies, unable to be recognized by screen readers and other assistive tools.
+    - The commenter emphasizes that while these issues could theoretically be partially fixed through methods like maintaining separate accessibility trees, this would result in performance losses and implementation complexity.
+    - Keyboard behavior in Makepad is also mentioned as being imperfect, and these issues aren't limited to the web version.
+    - Summary view: Makepad's web support currently seems more like an "additional feature," suitable for scenarios where web experience isn't a priority. However, if one truly wants to create web applications, the pure canvas approach has "fundamental flaws" and isn't recommended for general web content.
+    - Nevertheless, the commenter also acknowledges Makepad's technological innovation and visual presentation on the desktop, believing it has good prospects in the desktop application domain.
