@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# use rik branch, because it has the latest changes
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "rik" }
+# use dev branch, because it has the latest changes
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
