@@ -15,8 +15,8 @@ export function HomeLayout() {
     }, [tUrl, navigate]);
 
     const handleClickGoToWebsite = useCallback(() => {
-        navigate(tUrl('https://makepad.nl/'))
-    }, [tUrl, navigate]);
+        window.open('https://www.makepad.nl', '_blank');
+    }, []);
 
     return (
         <>
