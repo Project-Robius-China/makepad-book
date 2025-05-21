@@ -6,4 +6,5 @@ export const EN_US = {
     heroSubSlogan: 'An in-development shader based live designable OSS UI-Framework',
     getStarted: 'Get Started',
     learnMore: 'Learn More',
+    goToWebsite: 'Website',
   } as const;

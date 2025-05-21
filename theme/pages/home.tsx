@@ -11,12 +11,12 @@ export function HomeLayout() {
 
     const navigate = useNavigate();
     const handleClickGetStarted = useCallback(() => {
-      navigate(tUrl('/guide/start/introduction'));
+        navigate(tUrl('/guide/start/introduction'));
     }, [tUrl, navigate]);
 
-    // const handleClickLearnMore = useCallback(() => {
-    //   navigate(tUrl('/guide/start/introduction'));
-    // }, [tUrl, navigate]);
+    const handleClickGoToWebsite = useCallback(() => {
+        navigate(tUrl('https://makepad.nl/'))
+    }, [tUrl, navigate]);
 
     return (
         <>
@@ -27,8 +27,8 @@ export function HomeLayout() {
                 description={t('heroSubSlogan')}
                 getStartedButtonText={t('getStarted')}
                 onClickGetStarted={handleClickGetStarted}
-                // learnMoreButtonText={t('learnMore')}
-                // onClickLearnMore={handleClickLearnMore}
+                goToWebsiteButtonText={t('goToWebsite')}
+                onClickGoToWebsite={handleClickGoToWebsite}
             />
             <FullyFeatured />
         </>

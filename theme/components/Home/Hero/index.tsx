@@ -8,9 +8,9 @@ export interface HeroProps {
     subTitle: string;
     description: string;
     getStartedButtonText?: string;
-    learnMoreButtonText?: string;
+    goToWebsiteButtonText?: string;
     onClickGetStarted?: () => void;
-    onClickLearnMore?: () => void;
+    onClickGoToWebsite?: () => void;
 }
 
 const Hero = memo(({
@@ -19,9 +19,9 @@ const Hero = memo(({
     subTitle,
     description,
     getStartedButtonText,
-    learnMoreButtonText,
+    goToWebsiteButtonText,
     onClickGetStarted,
-    onClickLearnMore,
+    onClickGoToWebsite,
 }: HeroProps) => {
   return (
     <section className={styles.hero}>
@@ -33,8 +33,8 @@ const Hero = memo(({
             <p className={styles.subtitle}>{subTitle}</p>
             <p className={styles.description}>{description}</p>
             <div className={styles['button-group']}>
+            <button className={styles['go-to-website']} onClick={onClickGoToWebsite}>{goToWebsiteButtonText}</button>
                 <button className={styles['get-started']} onClick={onClickGetStarted}>{getStartedButtonText}</button>
-                <button className={styles['learn-more']} onClick={onClickLearnMore}>{learnMoreButtonText}</button>
             </div>
         </div>
     </section>

@@ -7,4 +7,5 @@ export const ZH_CN: Record<keyof typeof EN_US, string> = {
     heroSubSlogan: '基于着色器的实时可设计开源的用户界面框架',
     getStarted: '快速开始',
     learnMore: '了解更多',
+    goToWebsite: '访问官网',
 }
