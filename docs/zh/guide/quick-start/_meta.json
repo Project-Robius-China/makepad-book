@@ -1,4 +1,8 @@
 [
     "app-examples",
-    "Image Viewer App"
+    {
+        "type": "dir",
+        "name": "image-viewer-app",
+        "label": "Image Viewer App"
+    }
 ]
