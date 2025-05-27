@@ -1,0 +1,75 @@
+# 13 - 创建菜单栏  
+
+在前面的几个步骤中，我们为应用构建了图片网格和幻灯片。但到目前为止，还不能在两者之间切换。接下来的几个步骤里，我们将实现图片网格和幻灯片之间的切换功能。
+
+我们的计划如下：
+
+- 首先，我们会创建一个带有单个按钮的菜单栏（MenuBar）。
+- 接着，我们会创建一个 ImageBrowser，它由一个带菜单栏的图片网格（ImageGrid + MenuBar）组成。
+- 最后，我们会使用 PageFlip 来在 ImageBrowser 和幻灯片之间切换。
+
+菜单栏中的按钮将用于切换到幻灯片视图。当幻灯片可见时，按下 Esc 键将切换回图片网格。
+
+这一步，我们先从创建菜单栏开始。
+
+> **注意**：如果你不想自己敲代码，可以在这里找到本步骤的全部代码：https://github.com/makepad/image_viewer/tree/main/step_13
+
+## 定义菜单栏  
+
+让我们先为菜单栏（MenuBar）添加一个定义。菜单栏是一个宽而矮的条状区域，占满容器的宽度，包含我们用来切换到幻灯片的按钮。
+
+在 app.rs 中，找到 live design 块，在 ImageGrid 定义之前，添加以下代码：
+
+```rust
+    MenuBar = <View> {
+        width: Fill,
+        height: Fit,
+
+        <Filler> {}
+        slideshow_button = <Button> {
+            text: "Slideshow"
+        }
+    }
+```
+
+菜单栏包含一个按钮，按钮前面有一个填充组件（Filler），用来确保按钮被布局到右侧。
+
+## 更新 App  
+
+既然我们已经有了菜单栏（MenuBar），接下来更新 App 的定义，让它显示菜单栏而不是幻灯片（幻灯片我们后面会再放回去）。
+
+在 app.rs 中，找到 live design 块，替换 App 的定义为以下内容：
+
+```rust
+    App = {{App}} {
+        placeholder: (PLACEHOLDER),
+
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    <MenuBar> {}
+                }
+            }
+        }
+    }
+```
+
+## 检查目前的进度  
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你应该会看到一个按钮：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/MenuBar.png)
+
+当然，你实际上看到的是菜单栏，但因为菜单栏本身是透明的，所以你只看到了按钮。
+
+## 下一步
+  
+这一步我们创建了菜单栏（MenuBar）。下一步，我们将创建图片浏览器（ImageBrowser）。

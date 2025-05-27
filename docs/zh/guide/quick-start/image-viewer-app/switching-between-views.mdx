@@ -1,0 +1,135 @@
+# 15 - 在视图之间切换  
+
+在上一步中，我们创建了图片浏览器（ImageBrowser），这是实现图片网格与幻灯片之间切换功能的一部分。
+
+回顾我们的计划：
+
+- 首先，创建一个带有单个按钮的菜单栏（MenuBar）。
+- 接着，创建一个图片浏览器（ImageBrowser），它由一个菜单栏加一个图片网格（ImageGrid）组成。
+- 最后，使用 PageFlip 在图片浏览器和幻灯片（Slideshow）之间切换。
+
+这一步，我们将使用 PageFlip 实现图片浏览器与幻灯片之间的视图切换。
+
+> **注意**：如果你不想自己敲代码，可以在这里找到本步骤的所有代码：https://github.com/makepad/image_viewer/tree/main/step_15
+
+## 你将学到的内容  
+
+在这一步中，你将学习：
+
+- 如何使用 PageFlip 在不同视图之间进行切换。
+
+## 更新 App  
+
+我们先从更新 App 的定义开始，使其使用 PageFlip。
+
+PageFlip 是一个容器，用于包含多个组件（widget），每次只显示其中一个。容器中的每个组件称为一个页面（page），当前显示的那个页面被称为活动页面（active page）。每个页面都有一个名称，可以通过这个名称来设置当前活动页面。
+
+在 `app.rs` 的 `live design` 块中，添加以下代码：
+
+```rust
+    App = {{App}} {
+        placeholder: (PLACEHOLDER),
+
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    page_flip = <PageFlip> {
+                        active_page: image_browser,
+
+                        image_browser = <ImageBrowser> {}
+                        slideshow = <Slideshow> {}
+                    }
+                }
+            }
+        }
+    }
+```
+
+这段代码定义了一个包含两个页面的 PageFlip：
+
+- `image_browser`：包含一个 ImageBrowser。
+- `slideshow`：包含一个 Slideshow。
+
+当前活动页面被设置为 `image_browser`。
+
+## 处理事件  
+
+接下来，我们将更新事件处理代码，以响应以下用户事件：
+
+- 当用户点击图像浏览器中的幻灯片按钮时，我们应切换到幻灯片视图（Slideshow）。
+- 当用户在幻灯片视图中按下 Escape 键时，我们应切换回图像浏览器（ImageBrowser）。
+
+在 `app.rs` 中，替换 `App` 结构体上 `MatchEvent` trait 的 `handle_actions` 方法定义，使用如下代码：
+
+```rust
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        if self.ui.button(id!(slideshow_button)).clicked(&actions) {
+            self.ui
+                .page_flip(id!(page_flip))
+                .set_active_page(cx, live_id!(slideshow));
+            self.ui.view(id!(slideshow.overlay)).set_key_focus(cx);
+        }
+
+        if self.ui.button(id!(navigate_left)).clicked(&actions) {
+            self.navigate_left(cx);
+        }
+        if self.ui.button(id!(navigate_right)).clicked(&actions) {
+            self.navigate_right(cx);
+        }
+
+        if let Some(event) =
+            self.ui.view(id!(slideshow.overlay)).key_down(&actions)
+        {
+            match event.key_code {
+                KeyCode::Escape => self
+                    .ui
+                    .page_flip(id!(page_flip))
+                    .set_active_page(cx, live_id!(image_browser)),
+                KeyCode::ArrowLeft => self.navigate_left(cx),
+                KeyCode::ArrowRight => self.navigate_right(cx),
+                _ => {}
+            }
+        }
+    }
+```
+
+这段代码和之前的几乎一样，只是我们添加了一些新的事件处理逻辑。下面我们详细讲解新加的部分。
+
+以下代码：
+
+```rust
+    if self.ui.button(id!(slideshow_button)).clicked(&actions) {
+        self.ui
+            .page_flip(id!(page_flip))
+            .set_active_page(cx, live_id!(slideshow));
+        self.ui.view(id!(slideshow.overlay)).set_key_focus(cx);
+    }
+```
+
+这段代码会检查幻灯片（slideshow）覆盖层是否处于键盘焦点状态，并且是否按下了 Escape 键。如果满足条件，就将 PageFlip 的活动页面切换回图片浏览器（image_browser）。
+
+## 检查目前的进度  
+
+让我们检查一下目前的进度。
+
+确保你在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你应该会看到和之前一样的图片网格，上方带有一个“幻灯片”按钮：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageBrowser.png)
+
+不过这次，点击幻灯片按钮应该会切换到幻灯片视图：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Slideshow%20Image%201.png)
+
+按下 Escape 键时，应该会切换回图片网格视图：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageBrowser.png)
+
+## 下一步
+
+现在我们已经能够在图片网格和幻灯片之间切换了。接下来的几个步骤中，我们将添加图片过滤的功能。

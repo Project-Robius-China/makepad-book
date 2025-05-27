@@ -1,0 +1,250 @@
+# 7 - 加载图片
+
+在上一步中，我们为应用添加了状态，使图像网格变得动态。
+
+回顾我们的计划：
+
+- 首先，我们为应用添加状态。
+- 然后，我们将使用这些状态来加载真实的图片。
+
+现在我们已经添加了状态，接下来将用它来加载真实图片并显示在网格中。
+
+> **注意**：如果你不想手动输入代码，可以在这里找到本步骤的完整代码：https://github.com/makepad/image_viewer/tree/main/step_7
+
+## 你将学到的内容
+
+在本步骤中，你将学到：
+
+- 如何在应用启动时初始化状态。
+- 如何从磁盘加载图片。
+
+## 下载图片
+
+由于我们接下来将展示真实的图片，首先我们需要一些图片资源。你可以选择使用你自己的图片，  
+或者下载我们在本教程中使用的图片压缩包：
+
+## 导入类型
+
+在接下来的代码中，我们将使用 Rust 标准库中的 `Path` 和 `PathBuf` 类型。在使用这些类型之前，我们需要先将它们导入。
+
+请在 `app.rs` 文件顶部添加以下代码：
+
+```rust
+use std::path::{Path, PathBuf};
+```
+
+这将使我们可以在接下来的代码中使用 `Path` 和 `PathBuf` 类型。
+
+## 更新 State 结构体
+
+现在我们已经有了一些图片，让我们更新 `State` 结构体，用来存储图片路径的列表，而不只是图片数量。
+
+请在 `app.rs` 中，将 `State` 结构体的定义替换为以下内容：
+
+```rust
+#[derive(Debug)]
+pub struct State {
+    image_paths: Vec<PathBuf>,
+    max_images_per_row: usize,
+}
+```
+
+这段更新将原来的 `num_images` 字段替换为了 `image_paths` 字段，`image_paths` 是一个包含所有图片路径的列表。
+
+### 更新 State 结构体的 Default 实现
+
+我们还需要更新 `State` 结构体的 `Default` trait 实现，以反映结构体字段的更改。
+
+请在 `app.rs` 中，将 `Default` trait 的实现替换为以下内容：
+
+```rust
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            image_paths: Vec::new(),
+            max_images_per_row: 4,
+        }
+    }
+}
+```
+
+### 更新 `num_images` 方法
+
+最后，我们需要更新 `State` 结构体中的 `num_images` 方法。因为我们已经不再使用 `num_images` 字段，而是通过 `image_paths` 列表来表示图片数量。
+
+请在 `app.rs` 中，将 `num_images` 方法替换为以下实现：
+
+```rust
+fn num_images(&self) -> usize {
+    self.image_paths.len()
+}
+```
+我们现在已经拥有加载真实图片所需的全部信息。
+
+## 更新 App 结构体  
+
+在继续之前，我们需要对 `App` 结构体做一个小改动。
+
+在 `app.rs` 文件中，将 `App` 结构体的定义替换为以下内容：
+
+```rust
+#[derive(Live)]
+pub struct App {
+    #[live]
+    ui: WidgetRef,
+    #[rust]
+    state: State,
+}
+```
+
+我们刚刚从 `App` 结构体中移除了 `LiveHook` trait 的派生。这是因为我们即将为 `App` 编写我们自己的 `LiveHook trait` 实现（我们马上会解释原因）。
+
+## 增加辅助方法
+
+为了让后续的代码更容易编写，我们将为 `App` 结构体添加一些辅助函数。
+
+请将以下代码添加到 `app.rs` 文件中：
+
+```rust
+impl App {
+    fn load_image_paths(&mut self, cx: &mut Cx, path: &Path) {
+        self.state.image_paths.clear();
+        for entry in path.read_dir().unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            self.state.image_paths.push(path);
+        }
+        self.ui.redraw(cx);
+    }
+}
+```
+
+`load_image_paths` 方法的作用如下：
+
+- 首先，它会清空 `image_paths` 中已有的路径。  
+- 接着，它遍历给定路径目录中的所有条目：  
+- 对于每个条目: 
+  - 它会检查该条目是否是一个文件。  
+  - 如果不是文件，则跳过该条目。  
+  - 否则，将该条目的路径添加到 `image_paths` 中。  
+
+- 最后，它调用 `self.ui.redraw(cx)` 来安排界面重绘。  
+
+这实际上用指定路径目录中所有文件的路径替换了 `image_paths` 中原有的路径。
+
+### 错误处理  
+为了简化起见，我们没有在 `load_image_paths` 方法中添加任何错误处理。该方法可能会失败的情况包括：
+
+- 给定的路径不存在。  
+- 给定的路径存在，但指向的不是目录文件。  
+- 我们没有权限读取该目录。  
+
+如果发生上述任何错误，我们的应用程序会直接崩溃（panic）。这对于教程来说是可以接受的，但在真实的应用中，我们需要更健壮的错误处理机制。
+
+## 实现 LiveHook 特性  
+
+既然我们已经有了一个方法来加载指定目录下所有图片的路径，我们需要确保该方法在应用启动时被调用。
+
+为此，我们可以使用 `LiveHook` 特性。回想一下，这个特性提供了几个可重写的方法，这些方法会在应用生命周期的不同阶段被调用。
+
+在 `app.rs` 文件中，添加以下代码：
+
+```rust
+impl LiveHook for App {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        let path = "path/to/your/images";
+        self.load_image_paths(cx, path.as_ref());
+    }
+}
+```
+
+> **注意**：请务必将 `"path/to/your/images"` 替换为你自己的图片目录路径！
+
+这段代码实现了 `App` 结构体的 `LiveHook` 特性。我们重写了其中的一个方法 `after_new_from_doc`。该方法会在应用被 `live design` 系统完全初始化之后，但在开始运行之前被调用。这使得它成为调用 `load_image_paths` 方法的理想时机。
+
+## 更新绘制代码  
+最后一步是在每次绘制图像网格中的每个 `Image` 之前，使用状态中保存的图片路径列表重新加载对应的图片。为此，我们需要修改 `ImageRow` 结构体中 `Widget` 特性下的 `draw_walk` 方法的实现。
+
+请将 `ImageRow` 上 `Widget` 特性的 `draw_walk` 方法实现替换为以下代码：
+
+```rust
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+                let row_idx = *scope.props.get::<usize>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_images_for_row(row_idx));
+                while let Some(item_idx) = list.next_visible_item(cx) {
+                    if item_idx >= state.num_images_for_row(row_idx) {
+                        continue;
+                    }
+
+                    let item = list.item(cx, item_idx, live_id!(ImageItem));
+                    let first_image_idx = state.first_image_idx_for_row(row_idx);
+                    let image_idx = first_image_idx + item_idx;
+                    let image_path = &state.image_paths[image_idx];
+                    let image = item.image(id!(image));
+                    image
+                        .load_image_file_by_path_async(cx, &image_path)
+                        .unwrap();
+                    item.draw_all(cx, &mut Scope::empty());
+                }
+            }
+        }
+        DrawStep::done()
+    }
+```
+
+代码量比较多，但这里唯一新增的内容是以下几行：
+
+```rust
+let first_image_idx = state.first_image_idx_for_row(row_idx);
+let image_idx = first_image_idx + item_idx;
+let image_path = &state.image_paths[image_idx];
+let image = item.image(id!(image));
+image
+    .load_image_file_by_path_async(cx, &image_path)
+    .unwrap();
+```
+
+这段代码的作用如下：
+
+- 它从状态中获取当前行的第一个图片索引（`first_image_idx`）。  
+- 计算当前图片的索引（`image_idx`）。  
+- 使用当前图片索引获取对应的图片路径。  
+- 调用 `item.image(..)` 获取当前图片对象的引用。  
+- 调用 `image.load_image_file_by_path_async(...)` 异步地重新加载该图片。  
+
+最终效果是，每个 `ImageItem` 里的 `Image` 会在绘制之前被重新加载为对应的正确图片。图片加载是异步完成的，细节处理在后台自动完成。
+
+> **注意**：如果图片已经显示的是正确的图片，则不会重复加载。
+
+## 检查到目前为止的进展  
+
+让我们检查一下目前的进展。
+
+确保你当前位于你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你的屏幕上应该会弹出一个包含图片网格的窗口，这次显示的应该是真实的图片，而不是占位符图片：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageGrid%20Images.png)
+
+## 下一步
+ 
+我们现在已经有了一个相当不错的图片网格实现。它能够显示真实的图片，并且根据图片数量动态调整行数和每行的图片数量。
+
+我们暂时先保持图片网格不变。接下来的几个步骤中，我们将为应用构建一个幻灯片播放功能。
+
