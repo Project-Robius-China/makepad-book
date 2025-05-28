@@ -1,0 +1,319 @@
+# 6 - 添加状态
+
+在之前的几个步骤中，我们为应用程序创建了一个图像网格的初始实现。
+
+为了保持初始实现的简单性，我们的图像网格存在以下限制：
+
+- 行数是固定的。
+- 每行的项目数量是固定的。
+- 使用的是占位图像，而不是真实图像。
+
+在接下来的几个步骤中，我们将去除这些限制，使图像网格变得更加动态。
+
+我们的计划如下：
+
+- 首先，我们将为应用程序添加状态。
+- 然后，我们将使用这些状态来加载真实图像。
+
+在本步骤中，我们将从为应用程序添加状态开始。
+
+> **注意：** 如果你不想手动输入代码，可以在此处找到本步骤的全部代码：[https://github.com/makepad/image_viewer/tree/main/step_6](https://github.com/makepad/image_viewer/tree/main/step_6)
+
+## 你将学到什么
+
+在本步骤中，你将学习：
+
+- 如何为你的应用程序添加状态。
+- 如何在小部件（widgets）中使用这些状态。
+
+### 定义 State 结构体
+
+我们首先定义一个结构体，用于存储图像网格所需的状态。
+
+将以下代码添加到 `app.rs` 文件中：
+
+```rust
+#[derive(Debug)]
+pub struct State {
+    num_images: usize,
+    max_images_per_row: usize,
+}
+```
+
+这段代码定义了一个名为 `State` 的结构体，其中包含以下两个字段：
+
+- `num_images`：表示图像的总数。
+- `max_images_per_row`：表示每行最多显示的图像数量。
+
+这些就是绘制图像网格所需的全部状态。
+
+## 实现 Default trait
+
+接下来，我们将为 `State` 结构体实现 `Default` trait。  
+为 `State` 结构体定义 `Default` trait 可以让它作为 `App` 结构体中的一个字段使用。
+
+将以下代码添加到 `app.rs` 文件中：
+
+```rust
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            num_images: 12,
+            max_images_per_row: 4,
+        }
+    }
+}
+```
+
+这段代码将创建一个 `State` 实例，其字段值与我们之前硬编码的值相同：
+
+- 每行 4 张图片
+- 每个网格 3 行图片
+
+## 添加辅助函数
+
+为了让后续的代码更易于编写，我们将在 `State` 结构体中添加一些辅助函数。
+
+将以下代码添加到 `app.rs` 文件中：
+
+```rust
+impl State {
+    fn num_images(&self) -> usize {
+        self.num_images
+    }
+
+    fn num_rows(&self) -> usize {
+        self.num_images().div_ceil(self.max_images_per_row)
+    }
+
+    fn first_image_idx_for_row(&self, row_idx: usize) -> usize {
+        row_idx * self.max_images_per_row
+    }
+
+    fn num_images_for_row(&self, row_idx: usize) -> usize {
+        let first_image_idx = self.first_image_idx_for_row(row_idx);
+        let num_remaining_images = self.num_images() - first_image_idx;
+        self.max_images_per_row.min(num_remaining_images)
+    }
+}
+```
+
+这些方法的作用如下，应该比较容易理解：
+
+- `num_images`：返回图像的总数量。
+- `num_rows`：返回总的行数。
+- `first_image_idx(row_idx)`：返回指定行的第一张图像的索引。
+- `num_images_for_row(row_idx)`：返回指定行的图像数量。
+
+> **注意：** 通常每行的图像数量由 `State` 结构体中的 `max_images_per_row` 字段决定，但在最后一行中，如果剩余的图像数量少于该值，那么这一行的图像数量也会相应减少。
+
+## 更新 App 结构体
+
+现在我们已经创建了 `State` 结构体，接下来将它添加到 `App` 结构体中。
+
+在 `app.rs` 中，用下面的定义替换 `live design` 块中的 `App` 定义：
+
+```rust
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef,
+    #[rust]
+    state: State,
+}
+```
+
+这将为 `App` 结构体添加一个名为 `state` 的字段，其类型为 `State` 结构体的实例。
+
+请注意，我们使用了 `#[rust]` 属性来标记 `state` 字段为普通的 Rust 字段。回忆一下，当 live design 系统遇到带有 `#[rust]` 标记的字段时，它会使用该类型的 `Default::default` 构造函数来初始化该字段。这正是我们之前为 `State` 结构体实现 `Default` trait 的原因。
+
+## 在 Widgets 中使用 State
+
+现在我们已经有了用于存储应用状态的位置，接下来来看看如何在应用中的小部件（widgets）中使用这个状态。
+
+### 在 App 中使用 State
+
+我们现在面临的直接问题是：状态保存在 `App` 结构体中，但我们的各个小部件却无法访问这个状态。为了让小部件能够访问状态，我们需要将状态传递给整个小部件树（widget tree）。
+
+让我们先来看一下当前 `App` 结构体中 `AppMain` trait 的实现：
+
+```rust
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        let mut scope = Scope::with_data(&mut self.state);
+        self.ui.handle_event(cx, event, &mut scope);
+    }
+}
+```
+
+注意我们目前使用的是 `Scope::empty`，为每个事件创建了一个空的作用域（scope）。回忆一下，在 Makepad 中，`scope` 是一个容器，它用于在事件传递过程中传递应用级数据（可变的）以及小部件的 props（不可变的）。
+
+之前，我们还没有状态，因此只是简单地创建了空的作用域。而现在我们有了实际的状态数据，是时候做出修改了。
+
+在 `app.rs` 中，用下面的代码替换 `AppMain` trait 的实现：
+
+```rust
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+	    let mut scope = Scope::with_data(&mut self.state);
+        self.ui.handle_event(cx, event, &mut scope);
+    }
+}
+```
+
+这段代码使用 `Scope::with_data` 创建了一个包含对 `state` 字段的可变引用的新作用域。然后将这个作用域传递给我们小部件树的根部。从这里开始，它会自动向下传递到 `ImageGrid`，我们就可以在其中访问状态；接着，状态还会进一步传递到 `ImageRow` 中。
+
+### 在 ImageGrid 中使用 State
+
+接下来，我们将在 `ImageGrid` 中使用状态。
+
+在 `app.rs` 中，用下面的代码替换 `ImageGrid` 结构体中 `Widget` trait 的 `draw_walk` 方法的实现：
+
+```rust
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_rows());
+                while let Some(row_idx) = list.next_visible_item(cx) {
+                    if row_idx >= state.num_rows() {
+                        continue;
+                    }
+   
+                    let row = list.item(cx, row_idx, live_id!(ImageRow));
+                    let mut scope = Scope::with_data_props(state, &row_idx);
+                    row.draw_all(cx, &mut scope);
+                }
+            }
+        }
+        DrawStep::done()
+    }
+```
+
+在这个新实现中，我们首先从作用域（scope）中获取状态：
+
+```rust
+let state = scope.data.get_mut::<State>().unwrap();
+```
+
+接着，我们从状态中获取行数，并告诉列表我们需要这么多项目：
+
+```rust
+list.set_item_range(cx, 0, state.num_rows());
+```
+
+最后，我们使用 `Scope::with_data_props` 创建一个新的作用域，其中包含对状态的可变引用以及当前行索引的引用，然后将这个新的作用域传递给当前的 `ImageRow`：
+
+```rust
+let mut scope = Scope::with_data_props(state, &row_idx);
+row.draw_all(cx, &mut scope);
+```
+
+下面的检查：
+
+```rust
+if row_idx >= state.num_rows() {
+    continue;
+}
+```
+
+是必要的，因为 set_item_range 只是指定了项目的最小数量：`next_visible_item` 可能会返回更多的项目，如果界面空间允许的话。当我们只绘制占位图时，这不会有问题，但现在我们是根据索引访问数组元素，如果项目数量超出预期，可能会导致数组越界错误，所以必须对这个情况进行保护。
+
+### 在 ImageRow 中使用 State
+
+最后，我们将在 `ImageRow` 中使用状态。
+
+在 `app.rs` 中，用下面的代码替换 `ImageRow` 结构体中 `Widget` trait 的 `draw_walk` 方法的实现：
+
+这段代码同样会从作用域中获取状态和当前行索引，并根据状态中每行图像的数量，动态绘制该行的所有图片。
+
+```rust
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+                let row_idx = *scope.props.get::<usize>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_images_for_row(row_idx));
+                while let Some(item_idx) = list.next_visible_item(cx) {
+                    if item_idx >= state.num_images_for_row(row_idx) {
+                        continue;
+                    }
+
+                    let item = list.item(cx, item_idx, live_id!(ImageItem));
+                    item.draw_all(cx, &mut Scope::empty());
+                }
+            }
+        }
+        DrawStep::done()
+    }
+```
+
+在这个新实现中，我们首先从作用域（scope）中获取状态和当前行索引：
+
+```rust
+let state = scope.data.get_mut::<State>().unwrap();
+let row_idx = *scope.props.get::<usize>().unwrap();
+```
+
+接着，我们从状态中获取当前行的图像数量，并告诉列表我们需要这么多项目：
+
+```rust
+list.set_item_range(cx, 0, state.num_images_for_row(row_idx));
+```
+
+和之前一样，下面的检查:
+
+```rust
+if item_idx >= state.num_images_for_row(row_idx) {
+    continue;
+}
+```
+
+是必须的，用来确保项目数量不会超过预期（因为 `set_item_range` 只指定了项目的最小数量）。
+
+## 检查到目前为止的进度
+
+让我们检查一下到目前为止的进展。
+
+确保你当前处于你的包目录下，然后运行以下命令：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你的屏幕上应该会出现一个窗口，里面显示的占位图像网格与之前一样：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageGrid%20Placeholders.png)
+
+不同的是，现在图像网格是基于状态动态绘制的，而不是硬编码的值。为了说明这一点，我们暂时将 `State` 结构体中 `Default` trait 的实现改成如下代码：
+
+```rust
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            num_images: 7,
+            max_images_per_row: 4,
+        }
+    }
+}
+```
+
+重新编译后，屏幕上显示的占位图像网格应该会变成如下样子：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageGrid%20State.png)
+
+## 下一步
+
+我们现在已经拥有了绘制图像网格所需的状态。下一步，我们将使用这些状态来加载真实的图片。

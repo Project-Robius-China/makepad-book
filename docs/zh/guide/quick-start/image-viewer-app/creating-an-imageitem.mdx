@@ -1,0 +1,143 @@
+# 3 - 创建 ImageItem
+
+在上一步中，我们创建了一个包含空窗口的最简 Makepad 应用程序。接下来的几步中，我们将为应用构建一个图片网格。
+
+我们的图片网格结构如下：
+
+- 每张图片存储在一个 `ImageItem` 中。
+- 多个 `ImageItem` 水平排列组成一个 `ImageRow`。
+- 多个 `ImageRow` 垂直排列组成一个 `ImageGrid`。
+
+为了简化初始实现，图片网格将有以下限制：
+
+- 行数是固定的。
+- 每行的项目数量是固定的。
+- 不使用真实图片，而是使用占位符图片。
+
+我们会在后续步骤中逐步去除这些限制。
+
+本步骤中，我们将先从创建一个用于显示单张图片的 `ImageItem` 开始。
+
+> **注意**：如果你不想手动输入代码，可以在这里找到本步骤的完整代码：https://github.com/makepad/image_viewer/tree/main/step_3
+
+## 你将学到的内容
+
+在这一步，你将学到：
+
+- 如何向你的应用添加资源。
+- 如何使用 `Image` 组件来显示图片。
+
+## 添加占位符图片
+
+如前所述，我们的初始实现将使用占位符图片来代替真实图片。要使用占位符图片，首先需要将其作为资源添加到我们的应用中。
+
+为此，首先确保你处于你的包目录下，然后运行：
+
+```bash
+mkdir resources
+```
+
+这将创建一个名为 `resources` 的新目录。
+
+进入 `resources` 目录，并将以下文件下载到该目录：[placeholder.jpg](https://publish.obsidian.md/makepad-docs/Tutorials/Image+Viewer/placeholder.jpg)
+
+我们将使用这个文件作为占位符图片。
+
+## 定义变量
+
+现在我们已经添加了占位符图片，可以在 DSL 代码中通过以下表达式来引用它：
+
+```rust
+dep("crate://self/resources/placeholder.jpg")
+```
+
+这个表达式表示一个依赖。Makepad 中的依赖是随应用打包的资源——在这里指的就是我们之前添加到 `resources` 目录中的占位符图片。
+
+不过每次想引用占位符图片时都写这么长的表达式会非常冗长，所以我们定义一个变量来简化它。
+
+在 `app.rs` 中，添加以下代码到 live design 块的顶部：
+
+```rust
+PLACEHOLDER = dep("crate://self/resources/placeholder.jpg");
+```
+
+## 定义 ImageItem
+
+既然我们有了引用占位符图片的方法，就可以为 `ImageItem` 添加定义了。`ImageItem` 作为图片的容器，同时还可以存放关于该图片的其他元数据（比如文件名、时间戳等），这些信息我们以后可能会用到。
+
+在 `app.rs` 中，将以下代码添加到 live design 块中，放在 `App` 定义之前：
+
+```rust
+    ImageItem = <View> {
+        width: 256,
+        height: 256,
+        
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+    }
+```
+
+这段代码定义了一个 `ImageItem`，包含以下属性：
+
+- `width: 256` 和 `height: 256` 确保每个项目都有固定的尺寸。
+
+在 `ImageItem` 内部，我们使用 `Image` 组件来显示实际的图片：
+
+```rust
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+```
+
+这个 `Image` 具有以下属性：
+
+- `width: Fill` 和 `height: Fill` 确保图片会拉伸以填满其容器。
+- `fit: Biggest` 确保图片按比例拉伸，使其最长边填满容器。
+- `source: (PLACEHOLDER)` 使用我们之前定义的 `PLACEHOLDER` 变量，设置占位符图片作为图片源。
+
+> **注意**：在 DSL 代码中计算表达式时，需要用括号 `(...)` 包裹起来。由于变量本身也是表达式，所以我们写成 `(PLACEHOLDER)` 来计算 `PLACEHOLDER` 变量。
+
+## 更新 App
+
+既然我们已经有了 `ImageItem`，接下来更新 `App` 的定义，让它显示一个 `ImageItem`，而不是一个空的 `View`。
+
+在 `app.rs` 中，将 live design 块里 `App` 的定义替换为下面的内容：
+
+```rust
+    App = {{App}} {
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    <ImageItem> {}
+                }
+            }
+        }
+    }
+```
+
+> **注意**：在当前版本的 DSL 中，定义的顺序很重要。特别是，不能引用尚未在代码中先前定义的内容，因此请确保在 `App` 中引用 `ImageItem` 之前，先定义好 `ImageItem`。
+
+## 检查到目前为止的进展
+
+让我们来检查一下到目前为止的进展。
+
+确保你处于你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，屏幕上应该会出现一个包含单张图片的窗口：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageItem.png)
+
+## 下一步
+
+在这一步，我们创建了一个用于显示单张图片的 `ImageItem`。下一步，我们将把多个 `ImageItem` 组合成一个 `ImageRow`，以显示一行图片。

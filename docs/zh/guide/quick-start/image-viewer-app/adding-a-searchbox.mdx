@@ -1,0 +1,126 @@
+# 16 - 添加搜索框
+
+在前面的步骤中，我们实现了在图片网格和幻灯片之间切换的功能。接下来的几个步骤，我们将实现根据查询字符串过滤图片的功能。
+
+我们会分两步进行：
+
+- 首先，在图片网格上方的菜单栏中添加一个搜索框。
+- 然后，更新应用的状态，使其根据搜索框中的查询来过滤图片。
+
+本步骤中，我们将重点添加菜单栏上的搜索框。
+
+> **注意**：如果你不想手动输入代码，可以在这里找到本步骤的完整代码：https://github.com/makepad/image_viewer/tree/main/step_16
+
+## 你将学到的内容  
+
+在本步骤中，你将学习：
+
+- 如何使用 Icon 来显示图标。
+- 如何使用 TextInput 组件来输入文本。
+
+## 添加放大镜图标  
+
+为了实现搜索框，我们需要一个放大镜图标，因此首先要把它作为资源添加到我们的应用中。
+
+请进入 `resources` 目录，下载以下文件到该目录：[looking_glass.svg](https://publish.obsidian.md/makepad-docs/Tutorials/Image+Viewer/looking_glass.svg)  
+
+我们将使用这个文件作为放大镜图标。
+
+## 定义变量  
+
+现在我们已经添加了放大镜图标，接下来在 DSL 代码中定义一个变量来引用这个放大镜图标。
+
+在 `app.rs` 中，添加以下代码到 `live design` 代码块的顶部：
+
+```rust
+LOOKING_GLASS = dep("crate://self/resources/looking_glass.svg");
+```
+
+## 定义 SearchBox  
+
+既然我们已经有了引用占位图像的方法，现在可以添加 SearchBox 的定义了。SearchBox 是一个简单的容器，组合了一个 Icon 和一个 TextInput。Icon 是用来显示图标的简单组件，而 TextInput 用于输入文本。
+
+在 `app.rs` 中，添加以下代码到 `live design` 代码块，位于 `MenuBar` 定义的上方：
+
+```rust
+    SearchBox = <View> {
+        width: 150,
+        height: Fit,
+        align: { y: 0.5 }
+        margin: { left: 75 }
+
+        <Icon> {
+            icon_walk: { width: 12.0 }
+            draw_icon: {
+                color: #8,
+                svg_file: (LOOKING_GLASS)
+            }
+        }
+
+        query = <TextInput> {
+            empty_text: "Search",
+            draw_text: {
+                text_style: { font_size: 10 },
+                color: #8
+            }
+        }
+    }
+```
+
+这段代码定义了一个搜索框（SearchBox），具有以下属性：
+
+- `width: 150` 和 `height: Fit` 确保搜索框占据所需的空间。
+- `align { y: 0.5 }` 确保搜索框垂直居中。
+- `margin { left: 75 }` 确保搜索框左侧有一定的边距（避免与 Mac 上的窗口按钮重叠）。
+
+搜索框中的图标（Icon）具有以下属性：
+
+- `icon_walk { ... }` 控制图标的布局方式。
+    - `width: 12` 使图标宽度为12像素。
+- `draw_icon { ... }` 控制图标的绘制方式。
+    - `color: #8` 使图标呈现红色。
+    - `svg_file: (LOOKING_GLASS)` 设置了放大镜图标作为 SVG 文件。
+
+搜索框中的文本输入框（TextInput）具有以下属性：
+
+- `empty_text: "Search"` 确保输入框为空时显示字符串“Search”。
+- `text_style: { ... }` 控制文本的样式。
+    - `font_size: 10` 确保文本大小为10磅。
+- `color: #8` 确保文本颜色为红色。
+
+## 更新菜单栏（MenuBar）  
+
+既然我们已经有了一个搜索框（SearchBox），接下来让我们更新菜单栏的定义，将搜索框包含进去。
+
+在 `app.rs` 文件中，找到 `live design` 块中的 `MenuBar` 定义，替换成下面的代码：
+
+```rust
+    MenuBar = <View> {
+        width: Fill,
+        height: Fit,
+
+        <SearchBox> {}
+        <Filler> {}
+        slideshow_button = <Button> {
+            text: "Slideshow"
+        }
+    }
+```
+
+## 检查到目前为止的进展  
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行以下命令：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你现在应该能在菜单栏中看到一个搜索框，位于我们之前创建的图片网格上方：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/SearchBox.png)
+
+## 下一步
+
+在这一步，我们在图片网格上方的菜单栏中添加了一个搜索框。下一步，我们将更新应用的状态，根据搜索框中的查询内容过滤显示的图片。
