@@ -1,0 +1,274 @@
+# 18 - 创建模态框
+
+在前面的步骤中。我们完成了整个应用的全部功能。接下来，我们将在目前功能的基础上，扩展一些内容，使得我们的应用给更加完善。在这一章中，我们将增加一个模态提示的功能。
+
+我们会分几步来进行：
+
+- 首先，创建一个模态框（AlertDialog）。
+- 然后，为模态框实现打开、关闭方法，并绑定到左右导航按钮上。
+- 最后，为模态框绑定鼠标，键盘事件。
+
+
+> **注意**: 如果你不想自己敲代码，可以在这里找到本步骤的完整代码： https://github.com/Project-Robius-China/image-viewer-workshop
+
+## 你将学到的内容
+
+在本步骤中，你将学习：
+
+- 如何创建模态框（AlertDialog）。
+- 如何触发和使用模态框（AlertDialog）。
+
+## 定义模态框（AlertDialog）
+
+让我们先为模态框（AlertDialog）增加一个定义。模态框是覆盖在父窗体上的子窗体，可以在不离开父窗体的情况下与用户有一些互动。
+
+在 `app.rs` 中，找到 `live design` 块，在 `SearchBox` 定义之前，添加以下代码：
+
+```rust
+AlertDialog = <Modal> {
+        width: Fill
+        height: Fill
+
+        bg_view: <View> {
+            width: Fill
+            height: Fill
+            show_bg: true
+            draw_bg: {
+                fn pixel(self) -> vec4 {
+                    return #00000080;
+                }
+            }
+        }
+
+        content: <View> {
+            width: Fit
+            height: Fit
+            align: {x: 0.5, y: 0.5}
+            padding: 20
+            flow: Down
+
+            draw_bg: {
+                color: #333
+            }
+
+            dialog = <RoundedView> {
+                width: 300
+                height: 150
+                align: {x: 0.5, y: 0.5}
+                draw_bg: {
+                    color: #333
+                    border_color: #555
+                    border_size: 1.0
+                    border_radius: 4.0
+                }
+                padding: 20
+
+
+                message = <Label> {
+                    width: Fill
+                    height: Fit
+                    align: {x: 0.5}
+                    margin: {bottom: 20}
+                    draw_text: {
+                        text_style: { font_size: 12.0 }
+                        color: #fff
+                    }
+                    text: "默认消息"
+                }
+            }
+        }
+    }
+```
+
+该定义创建了一个具有以下属性的 `AlertDialog` :
+
+- 这里使用 `Modal` 组件， `width: Fill` 和 `height: Fill` 表明模态框要充满其父窗体。
+- `bg_view` 绘制背景区域。
+    - `width: Fill` 和 `height: Fill`: 同样表明背景要充满父组件。
+    - `show_bg: true`: 显示背景。
+    - `draw_bg: {...}`: 绘制背景。
+        - `fn pixel(self) -> vec4 {...}`: 是 Makepad 中自定义的 `MPSL` 着色语言。 MPSL 可以生成为 glsl 等着色语言。
+        - `return #00000080`: 返回背景颜色为 `#00000080`。确保背景有透明度。
+
+> 关于 `MPSL` 着色语言的部分，这里不详细展开，在本教程 `着色语言` 部分有详细介绍。
+
+> 这里讲解一下背景值：Alpha 值的范围是 0.0 (完全透明) 到 1.0 (完全不透明)。十六进制的 cc 转换为十进制是 204。Alpha 的计算方式是 十进制值 / 255。所以 204 / 255 ≈ 0.8。如果你想让它更透明，你需要一个更小的 alpha 值。例如，如果你想要大约 50% 的透明度：255 * 0.5 = 127.5。最接近的十六进制值是 80 (十进制 128)。所以颜色会是 #00000080。如果你想要大约 30% 的透明度：255 * 0.3 ≈ 76.5。最接近的十六进制值是 4D (十进制 77) 或 4C (十进制 76)。所以颜色会是 #0000004D 或 #0000004C。
+
+为 `<Modal>` 组件 `content` 字段赋值新的 `<View>` 来定义模态框中间的显示区域。
+
+- `width: Fit` 和 `height: Fit`: 表示宽度和高度适应子组件。
+- `align: {x: 0.5, y: 0.5}`: 确保显示区域居中。
+- `padding: 20`: 内间距设置为 20。
+- `flow: Down`: 子组件垂直排列。
+- `draw_bg: {color: #333}`: 绘制显示区域背景颜色。
+
+中间显示文字的区域使用 `<RoundedView>` 并命名为 `dialog`。
+
+- `width: 300` 和 `height: 150`: 表示宽度 300，高度 150。
+- `align: {x: 0.5, y: 0.5}`: 确保文字区域居中。
+- `draw_bg: {...}`: 绘制背景。
+    - `color: #333`: 背景颜色为 #333。
+    - `border_color: #555`: 边框颜色为 #555。
+    - `border_size: 1.0`: 边框大小为 1.0 。
+    - `border_radius: 4.0`: 边框圆角为 4.0。
+- `padding: 20`: 内间距 20。
+
+使用 `<Label>` 来显示文本消息。 
+
+- `width: Fill` `height: Fit`: 宽度填满父组件，高度适应子组件。
+- `align: {x: 0.5}`: 在水平方向上居中。
+- `margin: {bottom: 20}`: 底部外边距为 20。
+- `draw_text: {...}`: 绘制文字的显示。 
+    - `text_style: { font_size: 12.0 }`: 控制字体风格中的字体大小。
+    - `color: #fff`: 字体颜色
+- `text: "默认消息"` 在未设定消息内容是，默认显示 `默认消息`。 
+
+## 更新 State 结构体
+
+在 `app.rs` 文件中，用下面的代码替换 `State` 结构体的定义：
+
+```rust
+#[derive(Debug)]
+pub struct State {
+    pub(crate) image_paths: Vec<PathBuf>,
+    pub(crate) filtered_image_idxs: Vec<usize>,
+    max_images_per_row: usize,
+    current_image_idx: Option<usize>,
+    show_alert: bool,
+    alert_message: String,
+}
+```
+
+这为 State 结构体增加了以下字段：
+
+- `show_alert`: 用于标记模态框是否处于开启状态。
+- `alert_message`: 用于记录模态框中的提示信息。
+
+### 更新 State 结构体的 Default Trait 实现
+
+我们还需要更新 State 结构体的 Default trait 实现，以反映这个新字段。
+
+在 `app.rs` 文件中，用下面的代码替换 `State` 结构体的 Default trait 实现：
+
+```rust
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            image_paths: Vec::new(),
+            filtered_image_idxs: Vec::new(),
+            max_images_per_row: 4,
+            current_image_idx: None,
+            show_alert: false,
+            alert_message: String::new(),
+        }
+    }
+}
+```
+
+## 增加控制方法
+
+我们将在 `App` 结构体中增加控制模态框打开，关闭方法。
+
+在 `app.rs` 文件中，添加以下代码到 App 结构体的 impl 块中：
+
+```rust
+fn show_alert(&mut self, cx: &mut Cx, message: &str) {
+        self.state.show_alert = true;
+        self.state.alert_message = message.to_string();
+        let modal_ref = self.ui.modal(id!(alert_dialog));
+        let message_lable = modal_ref.label(id!(message));
+        message_lable.set_text(cx, message);
+        modal_ref.open(cx);
+    }
+
+    
+    fn close_alert(&mut self, cx: &mut Cx) {
+        self.state.show_alert = false;
+        self.ui.modal(id!(alert_dialog)).close(cx);
+    }
+```
+
+这些方法的作用如下：
+
+`show_alert` 方法控制模态框的开启：
+
+- `self.state.show_alert = true` 先将 `state` 中的 `show_alert` 字段设置为 `true`, 表示模态框处于开启状态。
+- `self.state.alert_message = message.to_string()` 将传入的提示文本信息赋值给 `state` 中的 `alert_message` 字段。
+- `let modal_ref = self.ui.modal(id!(alert_dialog))` 获取定义的模态框的 `modal_ref` 引用。
+- `let message_lable = modal_ref.label(id!(message))` 获取模态框引用 `modal_ref` 中的 文本标签 label 的引用 `message_lable`。
+- `message_lable.set_text(cx, message)` 将提示文本信息设置为传入的参数 `message` 。
+- `modal_ref.open(cx)` 使用 `modal_ref` 中的 `open()` 方法，打开模态框。
+
+`close_alert` 方法控制模态框的关闭，其中内容与开启时类似，这里不加赘述。
+
+### 将模态控制方法绑定到按钮
+
+回到控制图片左右导航的按钮的代码下，将一下代码替换到原始的代码：
+
+```rust
+pub fn navigate_left(&mut self, cx: &mut Cx) {
+        if let Some(image_idx) = self.state.current_image_idx {
+            if image_idx > 0 {
+                self.set_current_image(cx, Some(image_idx - 1));
+            } else {
+                self.show_alert(cx, "已经是第一张图片了");
+            }
+        }
+    }
+
+    fn navigate_right(&mut self, cx: &mut Cx) {
+        if let Some(image_idx) = self.state.current_image_idx {
+            if image_idx + 1 < self.state.num_images() {
+                self.set_current_image(cx, Some(image_idx + 1));
+            } else {
+                self.show_alert(cx, "已经是最后一张图片了");
+            }
+        }
+    }
+```
+
+其实只是在 `navigate_left` 和 `navigate_right` 方法中增加了： 
+
+```rust
+ else {
+    self.show_alert(cx, "已经是最后一张图片了");
+    }
+```
+
+的代码，确保在图片预览到最左侧和最右侧没有图片时，打开模态框进行提示。
+
+## 增加事件
+
+目前我们已经确保模态框能在用户需要的时候打开。同样，我们也需要绑定事件来关闭模态框。
+
+在 `handle_actions` 中添加：
+
+```rust
+if self.ui.modal(id!(alert_dialog)).dismissed(actions) {
+        self.close_alert(cx); 
+    }
+```
+
+Modal 组件中的 `dismissed()` 函数确保了用户鼠标点击模态框中的透明背景区域或者键盘上按 `Esc` 键时响应，只需要在这两个事件响应时，调用上面我们定义的 `close_alert()` 函数关闭模态框即可。
+
+> 在 Makepad 组件的设计哲学中，将非用户触发的系统事件例如：鼠标事件，按键事件。都封装在了 Widget 组件内容，如果想要详细了解内容如何响应，请查看 组件的实现 ，这里不加赘述。
+
+## 检查到目前为止的进度
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，在放映模式下第一张图片时点击向左按钮或者在最后一张图片时点击向右按钮，弹出模态框提示。 点击透明背景或者按下 `Esc` 键模态关闭。
+
+![]()
+
+## 下一步
+
+在这一步中，我们为程序实现了模态窗。下一步，我们会为程序增加一个扩展，当在网格模式下点击图片时候，自动切换到 幻灯片放映 模式
+
+
