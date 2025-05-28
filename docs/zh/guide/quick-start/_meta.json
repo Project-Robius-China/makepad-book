@@ -3,6 +3,7 @@
     {
         "type": "dir",
         "name": "image-viewer-app",
-        "label": "Image Viewer App"
+        "label": "Image Viewer App",
+        "collapsed": true
     }
 ]
