@@ -1,0 +1,127 @@
+# 20 - 创建点击放映
+
+在上一步中，我们将不同的组件拆分成不同的模块，增加了代码的可维护性。在这一步中，我们将实现在网格模式下点击图片时候，自动切换到 slideshow 模式。
+
+我们会分两步来进行：
+
+- 首先，在子组件（ImageItem）中响应点击的事件并传递 `action`。
+- 然后，在根组件（App）中接受 `action` 并跳转到放映模式。
+
+这一步，我们将重点放在如何使用 `action` 实现组件之间的通信上。
+
+> **注意**: 如果你不想自己敲代码，可以在这里找到本步骤的完整代码： https://github.com/Project-Robius-China/image-viewer-workshop
+
+## 你将学到的内容
+
+在本步骤中，你将学习：
+
+- 如何处理鼠标点击事件。
+- 如何使用 `action` 处理组件之间的通信。
+
+## 定义 Action
+
+让我们先在 `ImageItem` 中，定义 `action`，关于 `action` 的讲解在[处理事件](./handling-events)中做过讲解。
+
+在 `image_item.rs` 中，定义 `ImageClickedAction` :
+
+```rust
+#[derive(Clone, Debug, Eq, Hash, Copy, PartialEq)]
+pub enum ImageClickedAction {
+    Clicked(usize),
+    None,
+}
+```
+
+这里定义了 `ImageClickedAction` 用于处理图片点击事件，它是一个枚举，有两个字段: `Clicked(usize)` 和 `None`。这里我们讲解一下关于在 Makepad 中 `action` 的定义和使用：
+
+如前面章节中讲到，`action` 是 Makepad 中进行组件之间通信的一个重要方式。正如上面所见，Makepad 中 `action` 是以枚举的形式出现，你可以在这个枚举中定义你想要响应的用户动作。
+
+Makepad 中，将 事件 `event` 和 动作 `action` 进行了区分：
+
+- `event`: 用于处理各种系统事件。 
+- `action`: 用于处理用户事件。
+
+这样可以更好的控制协调各种事件，并且在代码层级解耦，增加代码的可维护性。
+
+一般的，我们要为创建的 `action` 实例实现三个 trait：
+
+- `Clone`: 确保 `action` 在传递过程中可以克隆。
+- `Debug`: 方便打印调试 `action`。
+- `DefaultNone`: `action` 在默认情况下值为 `None`。
+
+这三个trait 也是 Makepad 的默认 `action` 开发规范。
+
+## 处理鼠标点击事件
+
+在 `image_item.rs` 文件中，用下面的代码替换 ImageItem 结构体的定义：
+
+```rust
+#[derive(Live, LiveHook, Widget)]
+pub struct ImageItem {
+    #[deref]
+    view: View,
+
+    #[live]
+    image_index: usize,
+}
+```
+
+这为 ImageItem 结构体增加了以下字段：
+
+- `image_index`: 父组件 `ImageRow` 设置，用于表示当前的图片的索引。
+
+在 `handle_event` 中，用下面的代码替换:
+
+```rust
+fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+        match event.hits(cx, self.view.area()) {
+            Hit::FingerUp(_) => {
+                cx.action(ImageClickedAction::Clicked(self.image_index));
+            }
+            _ => {}
+        }
+    }
+```
+
+`event.hits()` 返回一个枚举 `Hit`,其中封装了常见的鼠标事件，所以这里我们使用 match 来进行匹配，`Hit::FingerUp(_)` 表示当我们点击鼠标左键手指抬起时的动作，也就是我们鼠标点击事件。这里我们只使用到了鼠标的点击事件，所以对于其他事件，我们使用 `_` 进行统一处理。
+
+`cx.action` 是传递 `action` 的方式，这里我们我们定义好的 `action` 传入这个函数。在 `action` 中带上我们设置的 `image_index` 字段，确保根组件能够正确获取到从那一张图片进行放映。
+
+### action 的传递方法
+
+- `cx.action()`: 这是最基础的 `action` 发送方法。适用于你需要在当前执行上下文中发送一个简单的、非特定 `widget` 的消息。它不携带额外的widget信息，不需要路径信息，就是纯粹的消息传递。
+- `cx.widget_action()`: 需要传入详细的 `widget_uid` 以及 `path`，包含了详细的发送者信息、路径信息和 `action`，适用于需要确定 `action` 是由某一个 `widget` 发送的情况。
+- `Cx::post_action()`: 是一个静态方法，主要适用于如何从后台线程安全地向UI线程发送 `action` 的情况。
+
+## 处理 action
+
+切换放映模式是在根组件下控制，所以我们要在 `app.rs` 下处理，在 `handle_actions()` 中增加一下代码：
+
+```rust
+for action in actions {
+    if let ImageClickedAction::Clicked(image_idx) = action.cast() { 
+        self.set_current_image(cx, Some(image_idx));
+        self.ui.page_flip(id!(page_flip)).set_active_page(cx, live_id!(slideshow));
+        self.ui.view(id!(slideshow.overlay)).set_key_focus(cx);
+    }
+}
+```
+
+`for action in actions {...}` 是将 `action` 从 参数 `actions` 中遍历出来。`action.cast()` 将遍历处的 `action` 进行投射，直到拿到我们设定的 `ImageClickedAction::Clicked(image_idx)`, 进行接下来的处理。
+
+之后调用 `set_current_image()` 来把点击的图片设置为当前需要播放的图片，之后开启放映模式，设置页面焦点，与我们直接点击放映按钮的功能一致。
+
+> **注意**: 如果你是使用 `cx.widget_action()` 来传递 `action`，那么相应的，你也应该使用 `action.as_widget_action()` 来接收 `action`。
+
+## 检查到目前为止的进度
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，那么当鼠标点击图片，就可出现放映效果。
