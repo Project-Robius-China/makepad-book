@@ -18,6 +18,7 @@
 
 - 如何创建模态框（AlertDialog）。
 - 如何触发和使用模态框（AlertDialog）。
+- 如何调试组件错误。
 
 ## 定义模态框（AlertDialog）
 
@@ -123,6 +124,27 @@ AlertDialog = <Modal> {
     - `text_style: { font_size: 12.0 }`: 控制字体风格中的字体大小。
     - `color: #fff`: 字体颜色
 - `text: "默认消息"` 在未设定消息内容是，默认显示 `默认消息`。 
+
+### 调试技巧
+
+以上我们给出的代码都为正确的代码，在日常开发中，难免会遇到一些 DSL 字段错误的问题，目前 Makepad 还没有 LSP 的支持，但 Makepad 提供了提示错误信息，我们可以通过终端的提示来确定错误。
+
+比如将这段代码添加到 `AlertDialog` 定义中：
+
+```rust
+color: #0000
+```
+
+在 `<Modal>` 的属性定义中，并没有 `color` 的字段，当我们保存更改时，终端提示报错：
+
+```plaintext
+Apply error: src/app.rs:19:9 - no matching field: color
+   origin: C:\Users\10245\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\makepad-platform-1.0.0\src\live_traits.rs:20  Color(0)
+```
+
+提示我们在 `app.rs` 下的第19行第9列没有匹配的字段 `color`，之后我们可以通过核对对应的属性，对这个字段进行修改。
+
+> **注意**: 如果在保存文件后，并没有出现提示，并且在修改其他属性代码界面并没有出现变化时，请重新运行程序，这样报错系统会重新加载。
 
 ## 更新 State 结构体
 
@@ -265,8 +287,6 @@ cargo run --release
 ```
 
 如果一切正常，在放映模式下第一张图片时点击向左按钮或者在最后一张图片时点击向右按钮，弹出模态框提示。 点击透明背景或者按下 `Esc` 键模态关闭。
-
-![]()
 
 ## 下一步
 
