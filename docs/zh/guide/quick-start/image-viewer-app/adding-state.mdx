@@ -140,8 +140,7 @@ pub struct App {
 ```rust
 impl AppMain for App {
     fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
-        let mut scope = Scope::with_data(&mut self.state);
-        self.ui.handle_event(cx, event, &mut scope);
+        self.ui.handle_event(cx, event, &mut Scope::empty());
     }
 }
 ```
