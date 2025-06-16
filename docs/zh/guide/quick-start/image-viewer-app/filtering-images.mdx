@@ -254,6 +254,20 @@ impl Default for State {
 
 这个改动的最终效果是，图片网格只显示过滤后的图片。
 
+## 处理事件
+
+接下来，我们将更新事件处理代码，来响应用户在搜索框中搜索图片的行为。
+
+在 `app.rs` 下，`App` 结构体中，找到 `handle_actions` 方法，加入以下代码:
+
+```rust
+if let Some(query) = self.ui.text_input(id!(query)).changed(&actions) {
+        self.filter_image_paths(cx, &query);
+    }
+```
+
+这段代码的含义是，当组件 `TextInput` 中的内容发生变化时，我们获取到其中的内容 `query`，并且调用我们定义好的 `filter_image_paths` 来找到对应的图片。
+
 ## 检查到目前为止的进度  
 
 确保你当前在你的包目录下，然后运行：
