@@ -146,6 +146,41 @@ Apply error: src/app.rs:19:9 - no matching field: color
 
 > **注意**: 如果在保存文件后，并没有出现提示，并且在修改其他属性代码界面并没有出现变化时，请重新运行程序，这样报错系统会重新加载。
 
+## 更新根组件
+
+在 `app.rs` 文件中，找到跟组件 `App`，用下面这段代码替换原来的代码:
+
+```rust
+App = {{App}} {
+        placeholder: (PLACEHOLDER),
+
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    flow: Overlay,
+
+                    page_flip = <PageFlip> {
+                        active_page: image_browser,
+
+                        image_browser = <ImageBrowser> {}
+                        slideshow = <Slideshow> {}
+                    }
+
+                    alert_dialog = <AlertDialog> {}
+                }
+            }
+        }
+    }
+```
+
+主要是增加了:
+
+```rust
+alert_dialog = <AlertDialog> {}
+```
+
+因为我们想要的效果是使用模态窗覆盖整个窗口，所以将我们刚定义的组件 `AlertDialog` 引入根组件使用。
+
 ## 更新 State 结构体
 
 在 `app.rs` 文件中，用下面的代码替换 `State` 结构体的定义：
