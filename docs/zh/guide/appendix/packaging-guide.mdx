@@ -1,0 +1,178 @@
+# Makepad 项目打包指南
+
+打包 Makepad 项目的要求取决于目标平台。本指南提供了如何为不同平台（包括桌面和移动平台）打包 Makepad 应用程序的概述。
+
+:::danger
+
+由于 makepad 1.0 版本的发布导致 robius-packaging-commands 工具目前存在资源路径复制不完整的问题，目前建议您使用其他打包方法进行应用程序打包和分发。
+
+请查看此 PR：https://github.com/project-robius/robius-packaging-commands/pull/1
+
+:::
+
+## 桌面打包
+
+使用 `cargo-packager` 工具来打包您的 Makepad 应用程序。
+
+在开始打包 Makepad 应用程序之前，请确保您已经安装了 cargo-packager 工具：
+
+```bash
+cargo install cargo-packager --locked
+```
+
+此工具帮助您为 Makepad 应用程序创建包，包括为不同平台生成必要的文件和目录。
+
+然后配置您的 `Cargo.toml` 文件以包含打包所需的元数据，您也可以创建一个 `packager.toml` 文件来指定其他打包选项。
+
+本指南使用 `Cargo.toml` 作为示例，但您也可以使用 `packager.toml` 来指定打包选项。
+
+```toml
+[package.metadata.packager]
+product_name = "YourAppName"
+identifier = "com.yourcompany.yourapp"
+authors = ["Your Name or Team name"]
+description = "A brief description of your Makepad application"
+### 注意：`long_description` 的每行最多 80 个字符。
+long_description = "..."
+icons = ["./assets/icon.png"]
+out_dir = "./dist"
+# ... 其他打包选项，请查看 cargo-packager 文档了解更多详情。
+
+before-packaging-command = """
+robius-packaging-commands before-packaging \
+    --force-makepad \
+    --binary-name <main-binary-name> \
+    --path-to-binary ./target/release/<main-binary-name>
+"""
+
+# 我们需要指定将包含在包中的资源，打包器将把它们复制到输出目录。
+resources = [
+  { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+  { src = "./dist/resources/your_app_name", target = "your_app_name" },
+]
+
+before-each-package-command = """
+robius-packaging-commands before-each-package \
+    --force-makepad \
+    --binary-name <main-binary-name> \
+    --path-to-binary ./target/release/<main-binary-name> \
+"""
+
+```
+
+我们使用小型的 `robius-packaging-commands` CLI 工具在打包 Makepad 应用程序之前运行打包命令。
+
+您可以使用以下命令安装 `robius-packaging-commands` 工具：
+
+```bash
+cargo install --locked --git https://github.com/project-robius/robius-packaging-commands.git
+```
+如果您不想使用 `robius-packaging-commands` 工具，您也可以手动运行打包命令，但建议使用该工具以方便操作。
+并手动将资源复制到输出目录。
+
+例如：
+
+```toml
+[package.metadata.packager]
+
+before-packaging-command = """
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-packaging
+"""
+
+before-each-package-command = """
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-each-package
+"""
+
+```
+
+### before-packaging-command
+
+以下命令主要使用 cargo-metadata 来确定主机构建系统上 `makepad_widgets` crate 的路径，并将 `makepad-widgets/resources` 目录复制到 `./dist/resources/makepad_widgets` 目录。
+
+我们还将您的应用项目的 `resources/` 目录复制到 `./dist/resources/<main-binary-name>` 目录。
+
+这是必要的，因为 `cargo packager` 命令仅支持在已知路径定义资源（参见下面的 `resources = [...]` 块），所以我们需要在打包之前将资源复制到已知的固定（静态）路径，以便 cargo-packager 可以找到它们并将它们包含在最终包中。
+
+### before-each-package-command
+
+然后我们构建整个应用项目，并将 `MAKEPAD`/`MAKEPAD_PACKAGE_DIR` 环境变量设置为适当的值。
+
+对于 macOS 应用程序包，这应该设置为 `.`，因为我们为 Makepad 设置了 `apple_bundle` cfg 选项，这使得 Makepad 在 `Contents/Resources/` 目录中查找资源，这是 Apple 应用程序包（`.app` 和 `.dmg`）的资源位置。
+
+对于 Debian `.deb` 包，这应该设置为 `/usr/lib/<main-binary-name>`，目前是 `/usr/lib/<main-binary-name>`。
+这是 `dpkg` 在安装 `.deb` 包时将应用程序资源文件复制到的目录。
+
+在 Linux 上，我们还会剥离二进制文件的不需要内容，这是 Debian 包的要求。
+
+对于 Debian 和 Pacman（仍在待办事项中！）包，我们还会自动生成您的应用程序所需的依赖项列表。
+
+
+了解更多关于 `cargo-packager` 的信息：[https://github.com/crabnebula-dev/cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
+
+### Linux (Debian/Ubuntu)
+
+1. 安装打包所需的依赖项：
+   ```bash
+    sudo apt-get update
+    sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+   ```
+
+2. 运行打包命令：
+   ```bash
+   cargo packager --release
+   ```
+
+### Windows(Windows-2022)
+
+如果您已经按照上述说明配置了 `Cargo.toml` 文件，您可以运行打包命令：
+
+```bash
+cargo packager --release --formats nsis
+```
+
+### MacOS
+
+如果您已经按照上述说明配置了 `Cargo.toml` 文件，您可以运行打包命令：
+
+```bash
+cargo packager --release
+```
+
+## 移动平台打包
+
+幸运的是，Makepad 提供了一种使用 `cargo-makepad` 为移动平台打包应用程序的便捷方式。
+
+```bash
+cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+```
+
+### Android
+
+Android 可以使用 `cargo-makepad` 轻松打包：
+
+```bash
+cargo makepad android install-toolchain
+cargo makepad android build -p your_profile_name --release # 这将构建 apk，然后您可以在设备或模拟器上安装它。
+```
+
+### iOS
+
+```bash
+cargo makepad apple ios install-toolchain
+```
+
+使用 `cargo-makepad` 构建 iOS 应用：
+```bash
+cargo makepad apple ios --org=organisation_name --app=product_name run-sim/run-device -p your_profile_name --release
+
+为了让 makepad 能够在真实设备上安装 ios 应用程序，需要一个配置文件。
+要创建一个，请在 xcode 中创建一个空应用程序，给它一个组织名称和产品名称，您需要完全复制并且不带空格/奇怪字符到 --org=x 和 --app=x 中
+                         --stable 使用稳定编译器
+ 还要在设备上至少运行一次，这样配置文件就会被创建
+                         --org=organisation_name
+                         --app=product_name
+ 如果您有多个签名身份或设备或配置文件，您可能需要明确设置它
+                         --profile=
+                         --cert=
+                         --device=
+```
