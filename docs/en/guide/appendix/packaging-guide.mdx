@@ -180,3 +180,18 @@ name and product name you copy exactly and without spaces/odd characters into --
                          --cert=
                          --device=
 ```
+
+## Wasm Packaging
+
+Makepad also supports compiling applications to WebAssembly (Wasm), allowing your app to run in the browser.
+
+To package your application for Wasm, you can use the following commands:
+
+```bash
+cargo makepad wasm install-toolchain # install Wasm toolchain
+cargo makepad wasm run -p your_profile_name --release
+```
+
+This will build your Makepad application as a Wasm module and run it in the browser, while also generating the corresponding HTML and JavaScript files in the /target/makepad-wasm-app/release/your_profile_name/ directory.
+
+It includes: makepad static resources and your application's resource files, as well as the related js_bridge files and the wasm module.

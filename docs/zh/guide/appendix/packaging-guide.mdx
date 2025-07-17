@@ -176,3 +176,18 @@ cargo makepad apple ios --org=organisation_name --app=product_name run-sim/run-d
                          --cert=
                          --device=
 ```
+
+## Wasm 打包
+
+Makepad 还支持将应用程序编译为 WebAssembly (Wasm)，这使得您的应用可以在浏览器中运行。
+
+要为 Wasm 打包应用程序，您可以使用以下命令：
+
+```bash
+cargo makepad wasm install-toolchain # install Wasm 工具链
+cargo makepad wasm run -p your_profile_name --release
+```
+
+这将构建您的 Makepad 应用程序为 Wasm 模块，并在浏览器中运行, 同时在/target/makepad-wasm-app/release/your_profile_name/目录下生成相应的 HTML 和 JavaScript 文件。
+
+它包括：makepad静态资源和您的应用程序的资源文件, 以及相关的js_bridge文件以及 wasm 模块。
