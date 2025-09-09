@@ -2,14 +2,6 @@
 
 打包 Makepad 项目的要求取决于目标平台。本指南提供了如何为不同平台（包括桌面和移动平台）打包 Makepad 应用程序的概述。
 
-:::danger
-
-由于 makepad 1.0 版本的发布导致 robius-packaging-commands 工具目前存在资源路径复制不完整的问题，目前建议您使用其他打包方法进行应用程序打包和分发。
-
-请查看此 PR：https://github.com/project-robius/robius-packaging-commands/pull/1
-
-:::
-
 ## 桌面打包
 
 使用 `cargo-packager` 工具来打包您的 Makepad 应用程序。
@@ -46,9 +38,15 @@ robius-packaging-commands before-packaging \
 """
 
 # 我们需要指定将包含在包中的资源，打包器将把它们复制到输出目录。
+# 注意：如果您使用的是 Makepad v1.0 或更高版本，则需要指定更多资源文件：
 resources = [
-  { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
-  { src = "./dist/resources/your_app_name", target = "your_app_name" },
+    { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
+    { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
+    { src = "./dist/resources/robrix", target = "robrix" },
 ]
 
 before-each-package-command = """
@@ -112,15 +110,17 @@ cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-e
 ### Linux (Debian/Ubuntu)
 
 1. 安装打包所需的依赖项：
-   ```bash
-    sudo apt-get update
-    sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
-   ```
+
+```bash
+sudo apt-get update
+sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+```
 
 2. 运行打包命令：
-   ```bash
-   cargo packager --release
-   ```
+
+```bash
+  cargo packager --release
+```
 
 ### Windows(Windows-2022)
 
@@ -137,6 +137,8 @@ cargo packager --release --formats nsis
 ```bash
 cargo packager --release
 ```
+
+查看更多关于 `robius-packaging-commands` 的信息：[https://github.com/project-robius/robius-packaging-commands/blob/main/README.md]
 
 ## 移动平台打包
 
@@ -176,6 +178,34 @@ cargo makepad apple ios --org=organisation_name --app=product_name run-sim/run-d
                          --cert=
                          --device=
 ```
+
+由于 `cargo-makepad` 并没有单独的 `build` 命令，您可以直接使用 `run-sim` 或 `run-device` 命令来构建应用程序, 然后进行打包。
+
+```bash
+# 通过这样的命令来构建和运行 iOS 模拟器上的应用程序
+cargo makepad apple ios --org=org.robius --app=robrix run-sim -p robrix --release
+
+# cargo-makepad 工具将会编译和打包ios应用程序，在./target/makepad-apple-app/aarch64-apple-ios-sim/release/robrix.app目录下生成相应的应用程序包。
+# 通过 zip 命令将 .app 目录压缩为 .zip 文件，然后您可以将其分发给其他人，或者上传到 TestFlight 或 App Store。
+
+# 通过这样的命令来构建和运行 iOS 设备上的应用程序, 其中--device(device_identifier) 可设置虚拟的。
+cargo makepad apple ios \
+  --org=org.robius \
+  --app=robrix \
+  --profile=$YOUR_PROFILE_PATH \
+  --cert=$YOUR_CERT_FINGERPRINT \
+  --device=IPhone \
+  run-device -p robrix --release
+
+# 同样，cargo-makepad 工具将会编译和打包ios应用程序，在./target/makepad-apple-app/aarch64-apple-ios/release/robrix.app目录下生成相应的应用程序包。
+cd ./target/makepad-apple-app/aarch64-apple-ios/release
+mkdir Payload
+cp -r robrix.app Payload/
+zip -r robrix-ios.ipa Payload
+# 然后您可以将生成的 .ipa 文件上传到 TestFlight 或 App Store。
+
+```
+
 
 ## Wasm 打包
 

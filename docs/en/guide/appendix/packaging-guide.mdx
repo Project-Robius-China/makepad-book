@@ -2,14 +2,6 @@
 
 Requirements for packaging a Makepad project depend on the target platform. This guide provides an overview of how to package your Makepad application for different platforms, including desktop and mobile.
 
-:::danger
-
-Due to the release of makepad 1.0 caused robius-packaging-commands tool currently exists resource path copy incomplete problem, it is currently recommended that you use another packaging method for application packaging and distribution. 
-
-See the This PR: https://github.com/project-robius/robius-packaging-commands/pull/1
-
-:::
-
 ## Desktop Packaging
 
 Use the `cargo-packager` tool to package your Makepad application.
@@ -46,9 +38,15 @@ robius-packaging-commands before-packaging \
 """
 
 # we need to specify the resources that will be included in the package, the packager will copy them to the output directory.
+# Note: if you are using Makepad v1.0 or above, you need to specify more resource files:
 resources = [
   { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
-  { src = "./dist/resources/your_app_name", target = "your_app_name" },
+  { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
+  { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
+  { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
+  { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
+  { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
+  { src = "./dist/resources/robrix", target = "robrix" },
 ]
 
 before-each-package-command = """
@@ -114,15 +112,17 @@ See more about `cargo-packager`: [https://github.com/crabnebula-dev/cargo-packag
 ### Linux (Debian/Ubuntu)
 
 1. install necessary dependencies for packaging:
-   ```bash
-    sudo apt-get update
-    sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
-   ```
+
+```bash
+sudo apt-get update
+sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+```
 
 2. run the packaging command:
-   ```bash
-   cargo packager --release
-   ```
+
+```bash
+cargo packager --release
+```
 
 ### Windows(Windows-2022)
 
@@ -139,6 +139,8 @@ if you already configure your `Cargo.toml` file as described above, you can run 
 ```bash
 cargo packager --release
 ```
+
+see more about `robius-packaging-commands`: [https://github.com/project-robius/robius-packaging-commands/blob/main/README.md]
 
 ## Mobile Packaging
 
@@ -180,6 +182,34 @@ name and product name you copy exactly and without spaces/odd characters into --
                          --cert=
                          --device=
 ```
+
+Because `cargo-makepad` does not have a separate `build` command, you can directly use the `run-sim` or `run-device` command to build the application, and then package it.
+
+```bash
+# Build and run the application on the iOS simulator using this command
+cargo makepad apple ios --org=org.robius --app=robrix run-sim -p robrix --release
+
+# cargo-makepad tool will compile and package the iOS application, generating the corresponding application package in the ./target/makepad-apple-app/aarch64-apple-ios-sim/release/robrix.app directory.
+# By using the zip command to compress the .app directory into a .zip file, you can distribute it to others or upload it to TestFlight or the App Store.
+
+# By this command to build and run the application on an iOS device, where --device (device_identifier) can set the virtual one.
+# Note: You need to replace $YOUR_PROFILE_PATH, $YOUR_CERT_FINGERPRINT, and IPhone with your actual provisioning profile path, certificate fingerprint, and device name.
+cargo makepad apple ios \
+  --org=org.robius \
+  --app=robrix \
+  --profile=$YOUR_PROFILE_PATH \
+  --cert=$YOUR_CERT_FINGERPRINT \
+  --device=IPhone \
+  run-device -p robrix --release
+
+# Seem as above, you can use the zip command to compress the .app directory into a .zip file for distribution or uploading to TestFlight or the App Store.
+cd ./target/makepad-apple-app/aarch64-apple-ios/release
+mkdir Payload
+cp -r robrix.app Payload/
+zip -r robrix-ios.ipa Payload
+
+```
+
 
 ## Wasm Packaging
 
