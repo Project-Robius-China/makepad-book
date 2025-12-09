@@ -15,7 +15,7 @@ export function HomeLayout() {
     }, [tUrl, navigate]);
 
     const handleClickMolyKitDocuments = useCallback(() => {
-        navigate(tUrl('/guide/start/introduction'));
+        navigate(tUrl('/moly-kit/index'));
     }, [tUrl, navigate]);
 
     const handleClickGoToWebsite = useCallback(() => {
