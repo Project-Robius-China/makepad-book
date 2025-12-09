@@ -16,8 +16,8 @@ const Layout = () => {
             href={ANNOUNCEMENT_URL}
             message={
               lang === 'en'
-                ? 'We are proud to release Makepad 1.0!🦀️, click to know more details.'
-                : '我们隆重推出 Makepad 1.0！🦀️, 点击查看更多细节'
+                ? '⚡️⚡️⚡️We recommend using the Moly Kit developer components to accelerate your development!'
+                : '⚡️⚡️⚡️推荐使用Moly Kit 开发者组件加速您的开发！'
             }
             localStorageKey="makepad-book-announcement-closed"
             display={page.pageType === 'home'}

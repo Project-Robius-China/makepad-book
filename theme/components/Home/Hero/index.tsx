@@ -9,8 +9,10 @@ export interface HeroProps {
     description: string;
     getStartedButtonText?: string;
     goToWebsiteButtonText?: string;
+    goToMolyKitButtonText?: string;
     onClickGetStarted?: () => void;
     onClickGoToWebsite?: () => void;
+    onClickGoToMolyKitDocs?: () => void;
 }
 
 const Hero = memo(({
@@ -20,8 +22,10 @@ const Hero = memo(({
     description,
     getStartedButtonText,
     goToWebsiteButtonText,
+    goToMolyKitButtonText,
     onClickGetStarted,
     onClickGoToWebsite,
+    onClickGoToMolyKitDocs,
 }: HeroProps) => {
   return (
     <section className={styles.hero}>
@@ -33,8 +37,9 @@ const Hero = memo(({
             <p className={styles.subtitle}>{subTitle}</p>
             <p className={styles.description}>{description}</p>
             <div className={styles['button-group']}>
-            <button className={styles['go-to-website']} onClick={onClickGoToWebsite}>{goToWebsiteButtonText}</button>
+                <button className={styles['go-to-website']} onClick={onClickGoToWebsite}>{goToWebsiteButtonText}</button>
                 <button className={styles['get-started']} onClick={onClickGetStarted}>{getStartedButtonText}</button>
+                <button className={styles['go-to-moly-kit-docs']} onClick={onClickGoToMolyKitDocs}>{goToMolyKitButtonText}</button>
             </div>
         </div>
     </section>

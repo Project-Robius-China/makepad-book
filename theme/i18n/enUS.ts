@@ -4,7 +4,8 @@ export const EN_US = {
     heroTitle: 'Makepad Book',
     heroSlogan: 'The Blazingly Fast Cross Platform Rust UIs',
     heroSubSlogan: 'An in-development shader based live designable OSS UI-Framework',
-    getStarted: 'Get Started',
     learnMore: 'Learn More',
-    goToWebsite: 'Website',
+    getStarted: 'Documentation',
+    goToWebsite: 'Makepad Website',
+    goToMolyKit: 'Use Moly Kit To Quick Dev!',
   } as const;

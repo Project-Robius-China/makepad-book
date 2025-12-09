@@ -19,7 +19,7 @@
         user-select: none;
         position: relative;
         &-img {
-            height: 250px;
+            height: 200px;
         }
     }
 
@@ -64,7 +64,7 @@
             cursor: pointer;
             transition: all 0.3s;
             &:hover {
-                background: #F66B24;
+                background: rgb(65,105,225);
             }
         }
 
@@ -78,7 +78,22 @@
             cursor: pointer;
             transition: all 0.3s;
             &:hover {
-                background: #F66B24;
+                background: #C50977;
+            }
+        }
+
+        .go-to-moly-kit-docs {
+            background: rgb(65,105,225);
+            background: linear-gradient(159deg, rgba(65,105,225,1) 0%, rgba(137,207,240,1) 100%);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 650;
+            cursor: pointer;
+            transition: all 0.3s;
+            &:hover {
+                background: #C50977;
             }
         }
     }

@@ -10,14 +10,14 @@
         "activeMatch": "/api/"
     },
     {
+        "text": "Moly Kit",
+        "link": "/moly-kit/",
+        "activeMatch": "/moly-kit/"
+    },
+    {
         "text": "weekly",
         "link": "/weekly/index",
         "activeMatch": "/weekly/"
-    },
-    {
-        "text": "examples",
-        "link": "/examples/introduction",
-        "activeMatch": "/examples/"
     },
     {
         "text": "contribute",

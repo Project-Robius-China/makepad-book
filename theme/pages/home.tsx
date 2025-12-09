@@ -14,6 +14,10 @@ export function HomeLayout() {
         navigate(tUrl('/guide/start/introduction'));
     }, [tUrl, navigate]);
 
+    const handleClickMolyKitDocuments = useCallback(() => {
+        navigate(tUrl('/guide/start/introduction'));
+    }, [tUrl, navigate]);
+
     const handleClickGoToWebsite = useCallback(() => {
         window.open('https://www.makepad.nl', '_blank');
     }, []);
@@ -29,6 +33,8 @@ export function HomeLayout() {
                 onClickGetStarted={handleClickGetStarted}
                 goToWebsiteButtonText={t('goToWebsite')}
                 onClickGoToWebsite={handleClickGoToWebsite}
+                goToMolyKitButtonText={t('goToMolyKit')}
+                onClickGoToMolyKitDocs={handleClickMolyKitDocuments}
             />
             <FullyFeatured />
         </>
