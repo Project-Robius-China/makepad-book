@@ -8,7 +8,7 @@ const Layout = () => {
     const { page } = usePageData();
     const lang = useLang();
     const tUrl = useI18nUrl();
-    const ANNOUNCEMENT_URL= tUrl("https://makepad.nl/");
+    const ANNOUNCEMENT_URL= tUrl("/moly-kit/index");
     return (
       <Theme.Layout
         beforeNav={
