@@ -2,11 +2,13 @@
 
 Requirements for packaging a Makepad project depend on the target platform. This guide provides an overview of how to package your Makepad application for different platforms, including desktop and mobile.
 
-## Desktop Packaging
+## 1. Desktop Packaging
 
-Use the `cargo-packager` tool to package your Makepad application.
+Makepad does not provide an official desktop packaging tool, so we use the popular community tool [`cargo-packager`](https://docs.crabnebula.dev/packager/) to package your Makepad application.
 
-Before you start packaging your Makepad application, make sure you already install the cargo-packager tool:
+### Pre-packaging checklist
+
+#### 1. Install `cargo-packager`
 
 ```bash
 cargo install cargo-packager --locked
@@ -14,9 +16,16 @@ cargo install cargo-packager --locked
 
 This tool helps you create packages for your Makepad application, including generating the necessary files and directories for different platforms.
 
-Then configure your `Cargo.toml` file to include the necessary metadata for packaging, also you can create a `packager.toml` file to specify additional packaging options.
+#### 2. Configure `cargo-packager`
 
-This Guide use `Cargo.toml` as an example, but you can also use `packager.toml` to specify packaging options.
+You can configure `cargo-packager` in two ways:
+
+1. Add a `[package.metadata.packager]` section in `Cargo.toml` that contains the metadata needed for packaging, including platform-specific settings (see the example below).
+2. Create a new `packager.toml` file to specify other packaging options.
+
+For more configurable parameters, see the `cargo-packager` documentation: https://docs.crabnebula.dev/packager/#configuration
+
+This guide uses `Cargo.toml` for most app configuration as an example:
 
 ```toml
 [package.metadata.packager]
@@ -28,7 +37,7 @@ description = "A brief description of your Makepad application"
 long_description = "..."
 icons = ["./assets/icon.png"]
 out_dir = "./dist"
-# ... other packaging options, see the documentation for cargo-packager for more details.
+# ... other packaging options, see the cargo-packager docs for more details.
 
 before-packaging-command = """
 robius-packaging-commands before-packaging \
@@ -37,16 +46,19 @@ robius-packaging-commands before-packaging \
     --path-to-binary ./target/release/<main-binary-name>
 """
 
-# we need to specify the resources that will be included in the package, the packager will copy them to the output directory.
+# We need to specify the resources that will be included in the package; the packager copies them to the output directory.
 # Note: if you are using Makepad v1.0 or above, you need to specify more resource files:
 resources = [
-  { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
-  { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
-  { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
-  { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
-  { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
-  { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
-  { src = "./dist/resources/robrix", target = "robrix" },
+    ######### ⚠️ Makepad built-in resource files you also need to include #########
+    { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
+    { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
+
+    ######### ⚠️ Your own project resource files #########
+    { src = "./dist/resources/you_app_resource", target = "you_app_resource" },
 ]
 
 before-each-package-command = """
@@ -58,19 +70,22 @@ robius-packaging-commands before-each-package \
 
 ```
 
-And we use the small `robius-packaging-commands` CLI tool to run the packaging commands before packaging your Makepad application.
+We use a small `robius-packaging-commands` CLI tool to run packaging commands before packaging your Makepad application.
 
-You can install the `robius-packaging-commands` tool using the following command:
+You can install the `robius-packaging-commands` tool with:
 
 ```bash
-cargo install --locked --git https://github.com/project-robius/robius-packaging-commands.git
+cargo install --version 0.2.0 --locked --git https://github.com/project-robius/robius-packaging-commands.git robius-packaging-commands
 ```
-If you don't want to use the `robius-packaging-commands` tool, you can also run the packaging commands manually, but it is recommended to use the tool for convenience.
-and manually copy the resources to the output directory.
+Note that the version of the robius-packaging-commands tool is 0.2.0.
 
-Such as:
+If you prefer not to use the `robius-packaging-commands` tool, you can also write your own packaging commands. You can import your resources and Makepad resources however you like, but for simple resource importing we recommend using this tool for convenience.
+
+For example:
 
 ```toml
+# packaging/before-packaging-command is your own helper for importing resources.
+# ⚠️ You still need to handle Makepad resources yourself, such as fonts.
 [package.metadata.packager]
 
 before-packaging-command = """
@@ -80,120 +95,96 @@ cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-p
 before-each-package-command = """
 cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-each-package
 """
-
 ```
+The `robius-packaging-commands` tool essentially performs the import work above. Only create a new hook crate for `cargo-packager` if you really need to customize the import order.
 
-### before-packaging-command
+### Desktop packaging per platform
 
-The below command primarily uses cargo-metadata to determine the path of the `makepad_widgets` crate on the host build system,and copies the `makepad-widgets/resources` directory to the `./dist/resources/makepad_widgets` directory.
+#### 1. Linux (Debian/Ubuntu)
 
-We also copy the your app project's `resources/` directory to the `./dist/resources/<main-binary-name>` directory.
-
-This is necessary because the `cargo packager` command only supports defining resources at a known path
-(see the `resources = [...]` block below),so we need to copy the resources to a known fixed (static) path before packaging, such that cargo-packager can locate them and include them in the final package.
-
-### before-each-package-command
-
-We then build the entire your app project and set the `MAKEPAD`/`MAKEPAD_PACKAGE_DIR` env vars to the proper value.
-
-For macOS app bundles, this should be set to `.` because we set the `apple_bundle` cfg option for Makepad, which causes Makepad to look for resources in the `Contents/Resources/` directory,
-which is where the resources are located for an Apple app bundle (`.app` and `.dmg`).
-
-For Debian `.deb` packages, this should be set to `/usr/lib/<main-binary-name>`, which is currently `/usr/lib/<main-binary-name>`.
-This is the directory in which `dpkg` copies app resource files to when installing the `.deb` package.
-
-On Linux, we also strip the binaries of unneeded content, as required for Debian packages.
-
-For Debian and Pacman (still a to-do!) packages, we also auto-generate the list of dependencies required by your application.
-
-
-See more about `cargo-packager`: [https://github.com/crabnebula-dev/cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
-
-### Linux (Debian/Ubuntu)
-
-1. install necessary dependencies for packaging:
+1. Install the dependencies required for packaging:
 
 ```bash
 sudo apt-get update
 sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
 ```
 
-2. run the packaging command:
+2. Run the packaging command:
 
 ```bash
-cargo packager --release
+  cargo packager --release
 ```
 
-### Windows(Windows-2022)
+#### 2. Windows (Windows-2022)
 
-if you already configure your `Cargo.toml` file as described above, you can run the packaging command:
+If you have already configured your `Cargo.toml` file as described above, you can run the packaging command:
 
 ```bash
 cargo packager --release --formats nsis
 ```
 
-### MacOS
+#### 3. macOS
 
-if you already configure your `Cargo.toml` file as described above, you can run the packaging command:
+If you have already configured your `Cargo.toml` file as described above, you can run the packaging command:
 
 ```bash
 cargo packager --release
 ```
 
-see more about `robius-packaging-commands`: [https://github.com/project-robius/robius-packaging-commands/blob/main/README.md]
+See more about `robius-packaging-commands`: [https://github.com/project-robius/robius-packaging-commands/blob/main/README.md]
 
-## Mobile Packaging
+## 2. Mobile Packaging
 
-Luckly, Makepad provides a convenient way to package your app for mobile platforms using `cargo-makepad`.
+Fortunately, packaging Makepad for mobile is not as complex as desktop, because Makepad provides `cargo-makepad` as the tool for mobile app packaging.
+
+### Install `cargo-makepad`
 
 ```bash
 cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
 ```
 
-### Android
+### 1. Android
 
-Android can easyly be packaged using `cargo-makepad`:
+Android can be packaged easily using `cargo-makepad`:
 
 ```bash
 cargo makepad android install-toolchain
-carog makepad android build -p your_profile_name -release # it will build the apk, then you can install it on your device or emulator.
+cargo makepad android build -p your_profile_name --release # This builds the apk, then you can install it on your device or emulator.
 ```
 
-
-### iOS
+### 2. iOS
 
 ```bash
 cargo makepad apple ios install-toolchain
 ```
 
-use `cargo-makepad` to build the iOS app:
+Use `cargo-makepad` to build the iOS app:
 ```bash
 cargo makepad apple ios --org=organisation_name --app=product_name run-sim/run-device -p your_profile_name --release
 
-in order for makepad to be able to install an ios application on a real device a provisioning profile is needed. 
-To create one make an empty application in xcode and give it an organisation
-name and product name you copy exactly and without spaces/odd characters into --org=x and --app=x
+In order for makepad to install an iOS application on a real device, a provisioning profile is needed.
+To create one, make an empty application in Xcode and give it an organization name and product name that you copy exactly,
+without spaces or odd characters, into --org=x and --app=x.
                          --stable use stable compiler
- Also run it on the device it at least once, so the profile is created
+Also run it on the device at least once so the profile is created
                          --org=organisation_name
                          --app=product_name
- If you have multiple signing identities or devices or provision profiles you might have to set it explicitly
+If you have multiple signing identities, devices, or provisioning profiles, you might need to set them explicitly
                          --profile=
                          --cert=
                          --device=
 ```
 
-Because `cargo-makepad` does not have a separate `build` command, you can directly use the `run-sim` or `run-device` command to build the application, and then package it.
+Because `cargo-makepad` does not have a standalone `build` command, you can directly use the `run-sim` or `run-device` command to build the application and then package it.
 
 ```bash
-# Build and run the application on the iOS simulator using this command
+# Build and run the application on the iOS simulator
 cargo makepad apple ios --org=org.robius --app=robrix run-sim -p robrix --release
 
-# cargo-makepad tool will compile and package the iOS application, generating the corresponding application package in the ./target/makepad-apple-app/aarch64-apple-ios-sim/release/robrix.app directory.
-# By using the zip command to compress the .app directory into a .zip file, you can distribute it to others or upload it to TestFlight or the App Store.
+# The cargo-makepad tool will compile and package the iOS application, generating the corresponding app bundle in ./target/makepad-apple-app/aarch64-apple-ios-sim/release/robrix.app.
+# Use the zip command to compress the .app directory into a .zip file, then distribute it or upload it to TestFlight or the App Store.
 
-# By this command to build and run the application on an iOS device, where --device (device_identifier) can set the virtual one.
-# Note: You need to replace $YOUR_PROFILE_PATH, $YOUR_CERT_FINGERPRINT, and IPhone with your actual provisioning profile path, certificate fingerprint, and device name.
+# Build and run the application on an iOS device; --device (device_identifier) can be a virtual one.
 cargo makepad apple ios \
   --org=org.robius \
   --app=robrix \
@@ -202,26 +193,27 @@ cargo makepad apple ios \
   --device=IPhone \
   run-device -p robrix --release
 
-# Seem as above, you can use the zip command to compress the .app directory into a .zip file for distribution or uploading to TestFlight or the App Store.
+# The cargo-makepad tool will compile and package the iOS application, generating the app bundle in ./target/makepad-apple-app/aarch64-apple-ios/release/robrix.app.
 cd ./target/makepad-apple-app/aarch64-apple-ios/release
 mkdir Payload
 cp -r robrix.app Payload/
 zip -r robrix-ios.ipa Payload
+# Then you can upload the generated .ipa file to TestFlight or the App Store.
 
 ```
 
 
-## Wasm Packaging
+## 3. Wasm Packaging
 
-Makepad also supports compiling applications to WebAssembly (Wasm), allowing your app to run in the browser.
+Makepad also supports compiling applications to WebAssembly (Wasm), which allows your app to run in the browser.
 
-To package your application for Wasm, you can use the following commands:
+To package your application for Wasm, use the following commands:
 
 ```bash
 cargo makepad wasm install-toolchain # install Wasm toolchain
 cargo makepad wasm run -p your_profile_name --release
 ```
 
-This will build your Makepad application as a Wasm module and run it in the browser, while also generating the corresponding HTML and JavaScript files in the /target/makepad-wasm-app/release/your_profile_name/ directory.
+This builds your Makepad application as a Wasm module and runs it in the browser, while also generating the corresponding HTML and JavaScript files in the /target/makepad-wasm-app/release/your_profile_name/ directory.
 
-It includes: makepad static resources and your application's resource files, as well as the related js_bridge files and the wasm module.
+It includes Makepad static resources, your application's resource files, the related js_bridge files, and the wasm module.
