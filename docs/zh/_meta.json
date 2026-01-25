@@ -5,8 +5,9 @@
         "activeMatch": "/guide/"
     },
     {
-        "text": "blog",
-        "link": "https://china-team.makepad.rs/"
+        "text": "SKILLS And Components",
+        "link": "/skills-and-components/index",
+        "activeMatch": "/skills-and-components/"
     },
     {
         "text": "API",

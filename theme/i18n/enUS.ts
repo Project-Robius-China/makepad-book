@@ -6,6 +6,6 @@ export const EN_US = {
     heroSubSlogan: 'An in-development shader based live designable OSS UI-Framework',
     learnMore: 'Learn More',
     getStarted: 'Documentation',
-    goToWebsite: 'Makepad Website',
+    goToWebsite: 'Offical Website',
     goToMolyKit: 'Use Moly Kit To Quick Dev!',
   } as const;

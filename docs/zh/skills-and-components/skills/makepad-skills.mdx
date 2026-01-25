@@ -1,0 +1,371 @@
+# Makepad-Skills
+
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/ZhangHanDong/makepad-skills/blob/main/.claude-plugin/plugin.json)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/ZhangHanDong/makepad-skills/blob/main/LICENSE)
+
+> **ZhangHanDong/makepad-skills**: https://github.com/ZhangHanDong/makepad-skills
+
+用于基于 Rust 的 [Makepad](https://github.com/makepad/makepad) 框架构建跨平台 UI 应用的 Agent 技能集。
+
+## 安装
+
+### 插件市场（推荐）
+
+通过 Claude Code 插件市场安装：
+
+```bash
+# Step 1: Add marketplace
+/plugin marketplace add ZhangHanDong/makepad-skills
+
+# Step 2: Install the plugin (includes all 20 skills)
+/plugin install makepad-skills@makepad-skills-marketplace
+```
+
+**使用插件技能：**
+
+插件技能通过命名空间访问（不会出现在 `/skills` 列表中，但可加载）：
+
+```bash
+# Load specific skills by namespace
+/makepad-skills:makepad-widgets
+/makepad-skills:makepad-layout
+/makepad-skills:robius-widget-patterns
+
+# Or just ask questions - hooks will auto-route to relevant skills
+"How do I create a Makepad button?"
+"makepad 布局怎么居中？"
+```
+
+**管理已安装插件：**
+
+```bash
+/plugin                  # List installed plugins
+/plugin uninstall makepad-skills@makepad-skills-marketplace  # Uninstall
+```
+
+### Shell 脚本安装
+
+使用安装脚本一键安装：
+
+```bash
+# Install to current project
+curl -fsSL https://raw.githubusercontent.com/ZhangHanDong/makepad-skills/main/install.sh | bash
+
+# Install with hooks enabled
+curl -fsSL https://raw.githubusercontent.com/ZhangHanDong/makepad-skills/main/install.sh | bash -s -- --with-hooks
+
+# Install to specific project
+curl -fsSL https://raw.githubusercontent.com/ZhangHanDong/makepad-skills/main/install.sh | bash -s -- --target /path/to/project
+
+# Install for Codex (.codex/skills)
+curl -fsSL https://raw.githubusercontent.com/ZhangHanDong/makepad-skills/main/install.sh | bash -s -- --agent codex
+
+# Install for Gemini CLI (.gemini/skills)
+curl -fsSL https://raw.githubusercontent.com/ZhangHanDong/makepad-skills/main/install.sh | bash -s -- --agent gemini
+```
+
+Gemini CLI 提示：Skills 仍处于实验阶段，如需使用请在 `/settings` 中启用 `experimental.skills`。
+
+**脚本特性：**
+- 自动检测 Rust/Makepad 项目（检查 `Cargo.toml`）
+- 安装前备份已有 skills
+- `--with-hooks` 会复制并配置自我进化 hooks（仅 Claude Code）
+- `--agent codex|claude-code|gemini` 选择 Codex、Claude Code 或 Gemini CLI（默认：claude-code）
+- `--target` 支持安装到任意项目目录
+- 彩色输出与清晰的进度提示
+
+**可用选项：**
+
+| 选项 | 说明 |
+|--------|-------------|
+| `--target DIR` | 安装到指定目录（默认：当前目录） |
+| `--with-hooks` | 启用自我进化 hooks（仅 Claude Code） |
+| `--agent AGENT` | 选择 agent：`codex`、`claude-code` 或 `gemini`（默认：`claude-code`） |
+| `--branch NAME` | 使用指定分支（默认：main） |
+| `--help` | 显示帮助信息 |
+
+### 手动安装
+
+```bash
+# Clone this repo
+git clone https://github.com/ZhangHanDong/makepad-skills.git
+
+# Copy to your project (https://code.claude.com/docs/en/skills)
+cp -r makepad-skills/skills your-project/.claude/skills
+
+# Copy to your project for Codex (https://developers.openai.com/codex/skills)
+cp -r makepad-skills/skills your-project/.codex/skills
+
+# Copy to your project for Gemini CLI (https://geminicli.com/docs/cli/skills/)
+cp -r makepad-skills/skills your-project/.gemini/skills
+```
+
+你的项目结构应如下所示（可用 `.codex` 或 `.gemini` 替代 `.claude`）：
+
+```
+your-project/
+├── .claude/
+│   └── skills/
+│       ├── .claude-plugin/
+│       │   └── plugin.json
+│       │
+│       ├── # === 核心技能（16） ===
+│       ├── makepad-basics/
+│       ├── makepad-dsl/
+│       ├── makepad-layout/
+│       ├── makepad-widgets/
+│       ├── makepad-event-action/
+│       ├── makepad-animation/
+│       ├── makepad-shaders/
+│       ├── makepad-platform/
+│       ├── makepad-font/
+│       ├── makepad-splash/
+│       ├── robius-app-architecture/
+│       ├── robius-widget-patterns/
+│       ├── robius-event-action/
+│       ├── robius-state-management/
+│       ├── robius-matrix-integration/
+│       ├── molykit/
+│       │
+│       ├── # === 扩展技能（3） ===
+│       ├── makepad-deployment/
+│       ├── makepad-reference/
+│       │
+│       ├── evolution/          # 自我进化系统
+│       │   └── templates/      # 贡献模板
+│       └── CONTRIBUTING.md
+├── src/
+└── Cargo.toml
+```
+
+更多详情请参考 [Claude Code Skills 文档](https://docs.anthropic.com/en/docs/claude-code/skills)。
+
+## 架构：面向协作的原子化技能
+
+### 为什么采用原子化结构？
+
+v2.1 引入了面向协作开发的 **原子化技能结构**：
+
+```
+robius-widget-patterns/
+├── SKILL.md              # 索引文件
+├── _base/                # 官方模式（编号、原子化）
+│   ├── 01-widget-extension.md
+│   ├── 02-modal-overlay.md
+│   ├── ...
+│   └── 18-drag-drop-reorder.md
+└── community/            # 你的贡献
+    └── {descriptive-pattern-name}.md
+```
+
+**优势：**
+- **不会产生合并冲突**：你的 `community/` 文件不会与官方 `_base/` 更新冲突
+- **并行开发**：多人可同时贡献
+- **清晰归属**：文件名中的 GitHub handle 提供署名
+- **渐进式披露**：SKILL.md 索引 → 具体模式详情
+
+### 自我进化：在开发中丰富技能
+
+自我进化功能允许你将开发中发现的模式沉淀到技能库中。
+
+#### 工作原理
+
+1. **开发中**：你在使用 Makepad 构建时发现了有用的模式、着色器或错误解决方案
+
+2. **捕获模式**：让 Claude 保存它：
+   ```
+   用户：这个 Tooltip 定位逻辑很有用，保存为社区模式。
+   Claude：[使用模板创建 community/{handle}-tooltip-positioning.md]
+   ```
+
+3. **自动检测**（启用 hooks）：当你遇到并修复错误时，系统会自动记录故障排查方案
+
+#### 启用自我进化 Hooks（可选）
+
+```bash
+# Copy hooks from evolution to your project
+cp -r your-project/.claude/skills/evolution/hooks your-project/.claude/skills/hooks
+
+# Make hooks executable
+chmod +x your-project/.claude/skills/hooks/*.sh
+
+# Add hooks config to your .claude/settings.json
+# See skills/evolution/hooks/settings.example.json for the configuration
+```
+
+#### 手动创建模式
+
+直接询问 Claude：
+```
+用户：为我刚实现的拖拽排序创建一个社区模式
+Claude：我会使用模板创建一个模式...
+```
+
+Claude 将会：
+1. 使用 `evolution/templates/pattern-template.md` 模板
+2. 在 `robius-widget-patterns/community/{descriptive-pattern-name}.md` 创建文件
+3. 填写 frontmatter 与内容
+
+### 社区贡献指南
+
+#### 贡献模式
+
+1. **在对应 robius-* 技能的 community 目录中创建文件**：
+   - Widget 模式 → `robius-widget-patterns/community/`
+   - 状态模式 → `robius-state-management/community/`
+   - 异步模式 → `robius-app-architecture/community/`
+
+2. **使用模板**：复制 `evolution/templates/pattern-template.md`
+
+3. **必需的 frontmatter**：
+   ```yaml
+   ---
+   name: my-pattern-name
+   author: your-github-handle
+   source: project-where-you-discovered-this
+   date: 2024-01-15
+   tags: [tag1, tag2, tag3]
+   level: beginner|intermediate|advanced
+   ---
+   ```
+
+4. **提交 PR** 到主仓库
+
+#### 贡献着色器/特效
+
+1. **创建特效文件**：
+   ```
+   makepad-shaders/community/{github-handle}-{effect-name}.md
+   ```
+
+2. **使用模板**：复制 `evolution/templates/shader-template.md`
+
+#### 贡献错误解决方案
+
+1. **创建排错条目**：
+   ```
+   makepad-reference/troubleshooting/{error-name}.md
+   ```
+
+2. **使用模板**：复制 `evolution/templates/troubleshooting-template.md`
+
+#### 与上游同步
+
+在保留个人贡献的同时保持本地技能更新：
+
+```bash
+# If you've forked the repo
+git fetch upstream
+git merge upstream/main --no-edit
+# Your community/ files won't conflict with _base/ changes
+```
+
+#### 晋升路径
+
+高质量的社区贡献可能被提升到 `_base/`：
+- 模式具有广泛的适用性且经过充分验证
+- 文档完整
+- 社区反馈积极
+- 通过 `author` 字段保留署名
+
+## 技能总览（v3.0 扁平结构）
+
+### 核心技能（16）
+
+#### Makepad 核心（10 项）
+
+| 技能 | 说明 | 使用场景 |
+|-------|-------------|-------------|
+| [makepad-basics](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-basics) | 应用结构、`live_design!`、`app_main!` | "创建新的 Makepad 应用" |
+| [makepad-dsl](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-dsl) | DSL 语法、继承、原型 | "如何在 DSL 中定义组件" |
+| [makepad-layout](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-layout) | 流式布局、尺寸、间距、对齐 | "组件居中"、"排列元素" |
+| [makepad-widgets](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-widgets) | 常见组件、自定义组件 | "创建按钮"、"构建表单" |
+| [makepad-event-action](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-event-action) | 事件处理、actions | "处理点击事件" |
+| [makepad-animation](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-animation) | 动画器、状态、过渡 | "添加悬停动画" |
+| [makepad-shaders](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-shaders) | 着色器、SDF、渐变、视觉效果 | "自定义视觉效果" |
+| [makepad-platform](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-platform) | 平台支持 | "构建 Android/iOS" |
+| [makepad-font](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-font) | 字体、文本、排版 | "修改字体/文本样式" |
+| [makepad-splash](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/makepad-splash) | Splash 脚本语言 | "动态 UI 脚本" |
+
+#### Robius 模式（5 项）
+
+| 技能 | 说明 | 使用场景 |
+|-------|-------------|-------------|
+| [robius-app-architecture](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/robius-app-architecture) | Tokio、异步/同步模式 | "组织异步应用结构" |
+| [robius-widget-patterns](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/robius-widget-patterns) | 可复用组件、`apply_over` | "创建可复用组件" |
+| [robius-event-action](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/robius-event-action) | 自定义 actions、`MatchEvent` | "自定义事件处理" |
+| [robius-state-management](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/robius-state-management) | AppState、持久化 | "保存/加载应用状态" |
+| [robius-matrix-integration](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/robius-matrix-integration) | Matrix SDK 集成 | "聊天客户端功能" |
+
+#### MolyKit（1 项）
+
+| 技能 | 说明 | 使用场景 |
+|-------|-------------|-------------|
+| [molykit](https://github.com/ZhangHanDong/makepad-skills/tree/main/skills/molykit) | AI 聊天、SSE 流式输出、`BotClient` | "AI 聊天集成" |
+
+### 扩展技能（3）
+
+**注意：** 生产级模式已整合进 robius-* 技能：
+- Widget 模式（11）→ `robius-widget-patterns/_base/`
+- 状态模式（5）→ `robius-state-management/_base/`
+- 异步模式（3）→ `robius-app-architecture/_base/`
+
+#### [makepad-deployment](https://github.com/ZhangHanDong/makepad-skills/blob/main/skills/makepad-deployment/SKILL.md) - 构建与打包
+
+构建桌面端（Linux、Windows、macOS）、移动端（Android、iOS）以及 Web（WebAssembly）。
+
+#### [makepad-reference](https://github.com/ZhangHanDong/makepad-skills/blob/main/skills/makepad-reference/SKILL.md) - 参考资料
+
+| 文件 | 说明 | 使用场景 |
+|------|-------------|-------------|
+| troubleshooting.md | 常见错误与修复 | "应用错误：no matching field" |
+| code-quality.md | Makepad 相关重构 | "简化这段代码" |
+| adaptive-layout.md | 桌面/移动端自适应 | "同时支持桌面与移动端" |
+
+#### [evolution](https://github.com/ZhangHanDong/makepad-skills/blob/main/skills/evolution/SKILL.md) - 自我进化
+
+| 组件 | 说明 |
+|-----------|-------------|
+| `templates/` | 模式、着色器与排错模板 |
+| `hooks/` | 自动检测与验证 hooks |
+| `references/` | 协作指南 |
+
+## 使用示例
+
+### 创建新项目
+```
+用户：创建一个名为 "my-app" 的 Makepad 应用，并带一个计数按钮
+Claude：[使用 makepad-basics 搭建脚手架，makepad-widgets 实现按钮/计数]
+```
+
+### 添加 Tooltip
+```
+用户：添加一个悬停时显示用户信息的 Tooltip
+Claude：[使用 robius-widget-patterns/_base/14-callout-tooltip.md 完整实现]
+```
+
+### 保存自定义模式
+```
+用户：将这个无限滚动实现保存为社区模式
+Claude：[创建 robius-widget-patterns/community/infinite-scroll.md]
+```
+
+### 修复编译错误
+```
+用户：遇到 "no matching field: font" 错误
+Claude：[使用 makepad-reference/troubleshooting.md 查找正确的 text_style 语法]
+```
+
+## 你可以做什么
+
+借助这些技能，Claude 可以帮助你：
+
+- 初始化新的 Makepad 项目结构
+- 使用 `live_design!` DSL 创建自定义组件
+- 处理事件与用户交互
+- 编写 GPU 着色器实现视觉效果
+- 实现流畅动画
+- 使用 async/tokio 管理应用状态
+- 构建桌面/移动端响应式布局
+- 为全平台打包应用
+- **捕获并分享** 你在开发中发现的模式
