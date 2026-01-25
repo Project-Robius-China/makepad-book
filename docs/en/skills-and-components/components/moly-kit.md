@@ -15,3 +15,7 @@ It boasts outstanding new features that provide essential references and design 
 - To learn how to use and integrate Moly Kit into your own Makepad app, read the documentation.
 
 To learn how to use and integrate Moly Kit into your own Makepad app, read the documentation: https://moly-ai.github.io/moly-ai.
+
+## Rerenderings
+
+![Moly Kit Chat Widget](./images/moly-client.png)

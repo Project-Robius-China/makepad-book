@@ -8,7 +8,7 @@ const Layout = () => {
     const { page } = usePageData();
     const lang = useLang();
     const tUrl = useI18nUrl();
-    const ANNOUNCEMENT_URL= tUrl("/moly-kit/index");
+    const ANNOUNCEMENT_URL= tUrl("/skills-and-components/index");
     return (
       <Theme.Layout
         beforeNav={
@@ -16,8 +16,8 @@ const Layout = () => {
             href={ANNOUNCEMENT_URL}
             message={
               lang === 'en'
-                ? '⚡️⚡️⚡️We recommend using the Moly Kit developer components to accelerate your development!'
-                : '⚡️⚡️⚡️推荐使用Moly Kit 开发者组件加速您的开发！'
+                ? 'Developing a Makepad app? Use Agent SKILLS and the component library to speed up your development! ⚡️⚡️⚡️'
+                : '在开发 Makepad 应用吗？快使用 Agent SKILLS和组件库帮助你更快的完成开发！⚡️⚡️⚡️'
             }
             localStorageKey="makepad-book-announcement-closed"
             display={page.pageType === 'home'}
