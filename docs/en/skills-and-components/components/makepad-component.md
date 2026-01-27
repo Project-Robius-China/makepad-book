@@ -1,6 +1,6 @@
 # Makepad Component
 
-> https://github.com/ZhangHanDong/makepad-component
+> https://github.com/Project-Robius-China/makepad-component
 
 A modern UI component library for [Makepad](https://github.com/makepad/makepad), inspired by Longbridge's [gpui-component](https://github.com/longbridge/gpui-component).
 
@@ -54,7 +54,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-makepad-component = { git = "https://github.com/ZhangHanDong/makepad-component", branch = "main" }
+makepad-component = { git = "https://github.com/Project-Robius-China/makepad-component", branch = "main" }
 ```
 
 ## Usage
@@ -91,7 +91,7 @@ live_design! {
 
 ```bash
 # Clone the repository
-git clone https://github.com/ZhangHanDong/makepad-component
+git clone https://github.com/Project-Robius-China/makepad-component
 cd makepad-component
 
 # Run the component zoo demo
