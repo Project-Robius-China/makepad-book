@@ -1,6 +1,6 @@
 # Makepad Component
 
-> https://github.com/ZhangHanDong/makepad-component
+> https://github.com/Project-Robius-China/makepad-component
 
 面向 [Makepad](https://github.com/makepad/makepad) 的现代 UI 组件库，灵感来自 Longbridge 的 [gpui-component](https://github.com/longbridge/gpui-component)。
 
@@ -54,7 +54,7 @@
 
 ```toml
 [dependencies]
-makepad-component = { git = "https://github.com/ZhangHanDong/makepad-component", branch = "main" }
+makepad-component = { git = "https://github.com/Project-Robius-China/makepad-component", branch = "main" }
 ```
 
 ## 用法
@@ -91,7 +91,7 @@ live_design! {
 
 ```bash
 # 克隆仓库
-git clone https://github.com/ZhangHanDong/makepad-component
+git clone https://github.com/Project-Robius-China/makepad-component
 cd makepad-component
 
 # 运行组件示例
