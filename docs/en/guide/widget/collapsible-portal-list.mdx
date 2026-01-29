@@ -1,0 +1,464 @@
+# Collapsible Portal List
+
+Auto-group consecutive items under collapsible headers in Makepad.
+
+**Level:** Advanced
+**Tags:** portal-list, grouping, fold-header, rangemap
+
+## What is PortalList?
+
+The **PortalList** widget efficiently handles large lists of items by only rendering the items currently visible in the viewport. It supports features like scrolling, flick scrolling, and alignment of items within the list. This is especially useful for implementing lists with a large number of items without compromising performance.
+
+### The Problem
+
+When displaying large datasets in a portal list (like a news feed or message list), consecutive items with the same category or key can create visual clutter. Users need a way to collapse related items into groups to better scan and navigate the list, especially when 3 or more consecutive items share the same key.
+
+### The Solution
+
+Use a `GroupHeaderManager` with `RangeMap` to track consecutive items with identical keys and automatically render them as `FoldHeader` widgets with collapsible content.
+
+| Feature | Description |
+|---------|-------------|
+| **Automatic Grouping** | Detect 3+ consecutive items with the same key and group them automatically |
+| **Efficient Lookups** | O(log n) lookups using RangeMap for checking group membership |
+| **Native Portal List** | Direct PortalList inside FoldHeader body for optimal performance |
+| **Dynamic Text Labels** | FoldButtonWithText shows "Show More"/"Show Less" based on state |
+
+## Step 1: Project Setup
+
+Add the required dependencies to your `Cargo.toml`:
+
+```toml
+# Cargo.toml
+[dependencies]
+rangemap = "1.5"
+makepad-widgets = { path = "../../widgets" }
+```
+
+Register your custom widget module in `lib.rs`:
+
+```rust
+// lib.rs or main.rs
+pub mod fold_button_with_text;  // Custom widget
+```
+
+## Step 2: Create FoldButtonWithText Widget
+
+This custom widget extends the standard `FoldButton` with dynamic text labels that change based on the fold state.
+
+:::warning IMPORTANT
+You must use `makepad_widgets::fold_button::FoldButtonAction` for action events. Do NOT create a custom FoldButtonAction type. This ensures compatibility with the FoldHeader widget system.
+:::
+
+```rust
+use makepad_widgets::*;
+use makepad_widgets::widget::WidgetActionData;
+use makepad_widgets::fold_button::FoldButtonAction;  // Use existing action type!
+
+#[derive(Live, Widget)]
+pub struct FoldButtonWithText {
+    #[animator] animator: Animator,
+    #[redraw] #[live] draw_bg: DrawQuad,
+    #[redraw] #[live] draw_text: DrawText,
+    #[walk] walk: Walk,
+    #[layout] layout: Layout,
+    #[live] active: f64,
+    #[live] triangle_size: f64,
+    #[live] open_text: ArcStringMut,   // Text when collapsed
+    #[live] close_text: ArcStringMut,  // Text when expanded
+    #[action_data] #[rust] action_data: WidgetActionData,
+}
+
+impl Widget for FoldButtonWithText {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        let uid = self.widget_uid();
+        let res = self.animator_handle_event(cx, event);
+
+        if res.is_animating() {
+            if self.animator.is_track_animating(cx, ids!(active)) {
+                let mut value = [0.0];
+                self.draw_bg.get_instance(cx, ids!(active), &mut value);
+                cx.widget_action(uid, &scope.path,
+                    FoldButtonAction::Animating(value[0] as f64))
+            }
+            if res.must_redraw() {
+                self.draw_bg.redraw(cx);
+            }
+        }
+
+        match event.hits(cx, self.draw_bg.area()) {
+            Hit::FingerDown(_fe) => {
+                if self.animator_in_state(cx, ids!(active.on)) {
+                    self.animator_play(cx, ids!(active.off));
+                    cx.widget_action(uid, &scope.path, FoldButtonAction::Closing)
+                } else {
+                    self.animator_play(cx, ids!(active.on));
+                    cx.widget_action(uid, &scope.path, FoldButtonAction::Opening)
+                }
+            },
+            Hit::FingerHoverIn(_) => {
+                cx.set_cursor(MouseCursor::Hand);
+                self.animator_play(cx, ids!(hover.on));
+            }
+            _ => ()
+        }
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.draw_bg.begin(cx, walk, self.layout);
+
+        // Dynamically select text based on state
+        let text = if self.active > 0.5 {
+            self.close_text.as_ref()  // Expanded state
+        } else {
+            self.open_text.as_ref()   // Collapsed state
+        };
+
+        let label_walk = walk.with_margin_left(self.triangle_size * 2.0 + 10.0);
+        self.draw_text.draw_walk(cx, label_walk, Align::default(), text);
+        self.draw_bg.end(cx);
+        DrawStep::done()
+    }
+}
+```
+
+## Step 3: Implement GroupHeaderManager
+
+The `GroupHeaderManager` uses `RangeMap` to efficiently track which items belong to groups. It provides O(log n) lookups for group membership.
+
+```rust
+use std::{collections::HashMap, ops::Range};
+use rangemap::RangeMap;
+
+#[derive(Debug, Clone, Default)]
+struct GroupMeta {
+    key: String,
+    count: usize,
+}
+
+#[derive(Default)]
+struct GroupHeaderManager {
+    group_ranges: RangeMap<usize, String>,
+    groups_by_id: HashMap<String, GroupMeta>,
+}
+
+impl GroupHeaderManager {
+    fn new() -> Self {
+        Self {
+            group_ranges: RangeMap::new(),
+            groups_by_id: HashMap::new(),
+        }
+    }
+
+    /// Check if item_id is part of a group
+    fn check_group_header_status(&self, item_id: usize) -> Option<Range<usize>> {
+        for (range, _) in self.group_ranges.iter() {
+            if range.contains(&item_id) {
+                return Some(range.clone())
+            }
+        }
+        None
+    }
+
+    /// Get group metadata for the group starting at item_id
+    fn get_group_at_item_id(&self, item_id: usize) -> Option<&GroupMeta> {
+        self.group_ranges
+            .iter()
+            .find(|(range, _)| range.start == item_id)
+            .and_then(|(_, header_id)| self.groups_by_id.get(header_id))
+    }
+
+    /// Compute groups from data - call ONLY when data changes!
+    fn compute_groups(&mut self, data: &[(String, String)]) {
+        self.group_ranges.clear();
+        let mut i = 0;
+
+        while i < data.len() {
+            let current_key = &data[i].0;
+            let mut count = 1;
+
+            // Count consecutive items with same key
+            while i + count < data.len() && &data[i + count].0 == current_key {
+                count += 1;
+            }
+
+            // Only create groups for 3+ consecutive items
+            if count >= 3 {
+                let header_id = format!("{}_group_{}", current_key, i);
+                self.group_ranges.insert(i..i + count, header_id.clone());
+                self.groups_by_id.insert(header_id, GroupMeta {
+                    key: current_key.clone(),
+                    count,
+                });
+            }
+            i += count;
+        }
+    }
+}
+```
+
+:::warning CRITICAL
+Call `compute_groups()` ONLY when data is first available or when data changes. NEVER call it during `draw_walk()` as it would recompute on every frame!
+:::
+
+**Wrong approach:**
+
+```rust
+fn draw_walk(...) {
+    // WRONG: Recomputes every frame!
+    self.group_manager.compute_groups(&self.data);
+    // ... rendering
+}
+```
+
+**Correct approach:**
+
+```rust
+fn after_new_from_doc(...) {
+    self.data = load_data();
+    // CORRECT: Compute once!
+    self.group_manager.compute_groups(&self.data);
+}
+```
+
+## Step 4: Define live_design! Structure
+
+Set up your widget templates in `live_design!`. Note the direct PortalList inside the FoldHeader body with `height: Fit`.
+
+```rust
+live_design! {
+    use link::widgets::*;
+    use crate::fold_button_with_text::*;
+
+    MyApp = <View> {
+        width: Fill, height: Fill
+
+        my_list = <PortalList> {
+            width: Fill, height: Fill
+
+            // Template for normal ungrouped items
+            Post = <View> {
+                width: Fill, height: 60
+                padding: 10
+                content = <View> {
+                    text = <Label> { text: "" }
+                }
+            }
+
+            // Empty placeholder for items within groups
+            Empty = <View> { height: 0, show_bg: false }
+
+            // FoldHeader for grouped items
+            FoldHeader = <FoldHeader> {
+                header: <View> {
+                    width: Fill, height: 50
+                    align: { x: 0.5, y: 0.5 }
+
+                    fold_button = <FoldButtonWithText> {
+                        open_text: "Show More"
+                        close_text: "Show Less"
+                    }
+                    summary_text = <Label> { text: "" }
+                }
+
+                body: <View> {
+                    width: Fill, height: Fit
+                    flow: Down
+
+                    // Direct PortalList in body!
+                    <PortalList> {
+                        height: Fit, width: Fill  // Use Fit, not 0!
+                        Post = <Post> {}
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+:::tip
+The PortalList inside FoldHeader body uses `height: Fit` to automatically size to its content. This is different from the old "dummy portal list" pattern that used `height: 0`.
+:::
+
+## Step 5: Portal List Integration
+
+Integrate the GroupHeaderManager with your portal list's draw logic. The key is handling three cases based on item position relative to group ranges.
+
+```rust
+impl Widget for MyPortalList {
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                list.set_item_range(cx, 0, self.data.len());
+
+                while let Some(item_id) = list.next_visible_item(cx) {
+                    // Check if this item is part of a group
+                    if let Some(range) = self.group_manager
+                            .check_group_header_status(item_id) {
+
+                        if item_id == range.start {
+                            // CASE 1: Start of group - render FoldHeader
+                            self.render_fold_header(cx, scope, &mut list,
+                                item_id, &range, walk);
+                        } else {
+                            // CASE 2: Within group - render Empty
+                            list.item(cx, item_id, live_id!(Empty))
+                                .draw_all(cx, &mut Scope::empty());
+                        }
+                    } else {
+                        // CASE 3: Outside group - normal item
+                        self.render_normal_item(cx, &mut list, item_id);
+                    }
+                }
+            }
+        }
+        DrawStep::done()
+    }
+}
+
+impl MyPortalList {
+    fn render_fold_header(&mut self, cx: &mut Cx2d, scope: &mut Scope,
+                          list: &mut PortalList, item_id: usize,
+                          range: &Range<usize>, walk: Walk) {
+        let group_meta = self.group_manager
+            .get_group_at_item_id(item_id).unwrap();
+
+        // Get FoldHeader from portal list
+        let fold_item = list.item(cx, item_id, live_id!(FoldHeader));
+
+        // Set header text (no "header" prefix needed!)
+        fold_item.label(ids!(summary_text))
+            .set_text(cx, &format!("{} ({} items)",
+                group_meta.key, group_meta.count));
+
+        // Draw FoldHeader and access inner PortalList
+        let mut walk = walk;
+        walk.height = Size::Fit;  // IMPORTANT!
+
+        while let Some(item) = fold_item.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list_ref) = item.as_portal_list().borrow_mut() {
+                let inner_list = list_ref.deref_mut();
+
+                // Render ALL items in the range
+                for idx in range.start..range.end {
+                    if let Some((key, text)) = self.data.get(idx) {
+                        let widget = inner_list.item(cx, idx, live_id!(Post));
+                        widget.label(ids!(content.text))
+                            .set_text(cx, &format!("{}: {}", key, text));
+                        widget.draw_all(cx, scope);
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Step 6: Understanding the Rendering Flow
+
+### Three Rendering Modes
+
+| Condition | Action |
+|-----------|--------|
+| `item_id == range.start` | Render FoldHeader |
+| `range.start < item_id < range.end` | Render Empty |
+| Outside any range | Render Normal Item |
+
+### Example Walkthrough
+
+Given data with Category A items at indices 0-2 (group) and Category C at 4-6 (group):
+
+:::info Indices 0-2 (Category A Group)
+- `next_visible_item()` returns 0
+- Check: `item_id == range.start` (0 == 0) → TRUE
+- Render FoldHeader at position 0 with ALL items (0, 1, 2)
+- `next_visible_item()` returns 1 → Render Empty
+- `next_visible_item()` returns 2 → Render Empty
+:::
+
+:::info Index 3 (Category B - Not Grouped)
+- Not part of any group → Render normal Post template
+:::
+
+:::info Indices 4-6 (Category C Group)
+- `next_visible_item()` returns 4
+- Check: `item_id == range.start` (4 == 4) → TRUE
+- Render FoldHeader at position 4 with ALL items (4, 5, 6)
+- Items 5 and 6 render as Empty when visited
+:::
+
+## Performance Considerations
+
+| Optimization | Benefit |
+|--------------|---------|
+| **RangeMap Efficiency** | O(log n) lookups for checking if an item belongs to a group |
+| **Empty Placeholders** | Items within a group render as 0-height views with minimal overhead |
+| **Lazy Widget Creation** | Widgets in collapsed FoldHeaders aren't created until expanded |
+| **Cache Expensive Computations** | Pre-compute summaries and metadata when groups are created |
+
+### Caching Example
+
+```rust
+impl SmallStateGroup {
+    pub fn update_cached_data(&mut self) {
+        // Cache expensive computations when groups are created
+        self.cached_summary = Some(generate_summary(
+            &self.user_events_map,
+            SUMMARY_LENGTH
+        ));
+        self.cached_avatar_user_ids = Some(extract_avatar_user_ids(
+            &self.user_events_map,
+            MAX_VISIBLE_AVATARS
+        ));
+    }
+}
+
+// Use cached data during rendering
+if let Some(summary) = &group.cached_summary {
+    fold_item.label(ids!(summary_text)).set_text(cx, summary);
+}
+```
+
+## When to Use This Pattern
+
+### Good Use Cases
+
+- News feeds grouped by topic/author
+- Message lists grouped by thread
+- File browsers grouped by type
+- E-commerce catalogs grouped by category
+- Event lists grouped by date
+
+### Avoid When
+
+- Items don't have natural grouping keys
+- Groups expected to be smaller than 3 items
+- Groups span non-consecutive items
+- Manual grouping control is required
+
+## Quick Reference
+
+### Key Components
+
+- **GroupHeaderManager** - Tracks consecutive items using RangeMap
+- **FoldHeader** - Built-in Makepad widget for collapsible sections
+- **FoldButtonWithText** - Custom widget with dynamic labels
+- **PortalList** - Efficient virtualized list rendering
+
+### Key Rules
+
+1. Call `compute_groups()` only when data changes, never in `draw_walk()`
+2. Use `height: Fit` for PortalList inside FoldHeader body
+3. Use `makepad_widgets::fold_button::FoldButtonAction`, not custom actions
+4. No need to specify "header" or "body" prefix when accessing FoldHeader children
+5. Render Empty for items within group range (except start)
+
+## Resources
+
+- [Robrix PR #667](https://github.com/project-robius/robrix/pull/667#issue-3833804354) - Final implementation result
+- [RangeMap Crate](https://docs.rs/rangemap/) - docs.rs/rangemap
+
+---
+
+*Pattern by alanpoon | Source: [Robrix](https://github.com/project-robius/robrix)*

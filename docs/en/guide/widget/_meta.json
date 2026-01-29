@@ -2,5 +2,6 @@
     "index",
     "widget-core-concepts",
     "widget-render",
-    "customized-button-widget"
+    "customized-button-widget",
+    "collapsible-portal-list"
 ]
