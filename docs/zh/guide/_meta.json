@@ -1,42 +1,7 @@
 [
     {
         "type": "dir",
-        "name": "quick-start",
-        "label": "快速入门"
-    },
-    {
-        "type": "dir",
         "name": "start",
-        "label": "关于本项目"
-    },
-    {
-        "type": "dir",
-        "name": "widget",
-        "label": "Widget"
-    },
-    {
-        "type": "dir",
-        "name": "live-DSL",
-        "label": "Live DSL"
-    },
-    {
-        "type": "dir",
-        "name": "layout-system",
-        "label": "布局系统"
-    },
-    {
-        "type": "dir",
-        "name": "animation-system",
-        "label": "动画系统"
-    },
-    {
-        "type": "dir",
-        "name": "shading-language",
-        "label": "着色语言"
-    },
-    {
-        "type": "dir",
-        "name": "appendix",
-        "label": "附录"
+        "label": "Quick Start"
     }
 ]

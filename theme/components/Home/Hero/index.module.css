@@ -1,0 +1,176 @@
+.hero {
+  --hero-ink: #1f1b16;
+  --hero-muted: #5a554f;
+  --hero-accent: #f66b24;
+  --hero-accent-2: #0f766e;
+  --hero-border: rgba(31, 27, 22, 0.12);
+  min-height: calc(100vh - var(--rp-nav-height) - var(--rp-banner-height, 0px));
+  min-height: calc(100dvh - var(--rp-nav-height) - var(--rp-banner-height, 0px));
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  color: var(--hero-ink);
+  z-index: 0;
+  font-family: "Space Grotesk", "Noto Sans SC", "Noto Sans", sans-serif;
+  background:
+    radial-gradient(110% 70% at 0% 0%, rgba(246, 107, 36, 0.18), transparent 60%),
+    radial-gradient(120% 80% at 100% 10%, rgba(15, 118, 110, 0.16), transparent 60%),
+    linear-gradient(135deg, #fdf7f0 0%, #f4efe8 55%, #fef8f2 100%);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(31, 27, 22, 0.12) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.32;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 140px;
+  background: linear-gradient(
+    180deg,
+    rgba(253, 247, 240, 0) 0%,
+    rgba(253, 247, 240, 0.65) 55%,
+    #fdf7f0 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-inner {
+  width: 100%;
+  min-height: inherit;
+  box-sizing: border-box;
+  gap: 16px;
+  padding: 64px 0 72px;
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+.hero-inner .logo {
+  user-select: none;
+  position: relative;
+}
+
+.hero-inner .logo-img {
+  height: 200px;
+  filter: drop-shadow(0 12px 18px rgba(31, 27, 22, 0.18));
+}
+
+.hero-inner .title {
+  background: linear-gradient(120deg, #1f1b16 0%, #f66b24 50%, #0f766e 100%);
+  text-align: center;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 72px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 93.6px;
+}
+
+.hero-inner .subtitle {
+  text-align: center;
+  font-size: 50px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 72px;
+  color: #2a241f;
+}
+
+.hero-inner .description {
+  text-align: center;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 400;
+  color: var(--hero-muted);
+}
+
+.hero-inner .button-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+
+.hero-inner .button-group .get-started {
+  background: var(--hero-accent);
+  border: 1px solid var(--hero-accent);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 10px 22px rgba(246, 107, 36, 0.25);
+}
+
+.hero-inner .button-group .get-started:hover {
+  background: #e05b1b;
+  transform: translateY(-1px);
+}
+
+.hero-inner .button-group .go-to-website {
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--hero-accent-2);
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.32);
+  font-size: 16px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.hero-inner .button-group .go-to-website:hover {
+  background: var(--hero-accent-2);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+@media screen and (max-width: 600px) {
+  .hero-inner {
+    padding: 52px 0 60px;
+  }
+
+  .hero-inner .logo-img {
+    height: 140px !important;
+  }
+
+  .hero-inner .title {
+    font-size: 32px !important;
+    line-height: normal !important;
+  }
+
+  .hero-inner .subtitle {
+    font-size: 20px !important;
+    line-height: normal !important;
+  }
+
+  .hero-inner .description {
+    line-height: 20px;
+    font-size: 16px !important;
+  }
+
+  .hero-inner .button-group .get-started,
+  .hero-inner .button-group .go-to-website {
+    font-size: 14px !important;
+  }
+}

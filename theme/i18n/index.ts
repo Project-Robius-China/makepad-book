@@ -1,4 +1,4 @@
-import { useLang, withBase } from 'rspress/runtime';
+import { useLang, withBase } from '@rspress/core/runtime';
 
 import { useCallback } from 'react';
 import { EN_US } from './enUS';

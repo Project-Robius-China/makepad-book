@@ -1,1 +1,0 @@
-Use `cargo run` to start this example.
