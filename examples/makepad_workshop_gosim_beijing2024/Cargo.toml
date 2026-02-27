@@ -1,0 +1,7 @@
+[package]
+name = "makepad_workshop_gosim_beijing2024"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }

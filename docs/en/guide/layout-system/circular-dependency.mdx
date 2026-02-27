@@ -1,0 +1,186 @@
+# Circular Dependencies in Makepad Live DSL Layout System
+
+## Understanding Layout Circular Dependencies
+
+Layout circular dependencies occur when components' size calculations create mutual dependencies, preventing the layout engine from determining final dimensions. This typically happens in these scenarios:
+
+1. Parent-child component size interdependencies
+2. Sibling component size interdependencies
+3. Complex Fit layout nesting
+
+Let's understand these situations through specific examples:
+
+### Parent-Child Circular Dependency
+
+```rust
+// Incorrect example: Parent-child circular dependency
+ParentView = <View> {
+    walk: {
+        width: Fill,
+        height: Fit  // Parent height depends on child
+    },
+    layout: {
+        flow: Down
+    },
+
+    <ChildView> {
+        walk: {
+            width: Fill,
+            height: Percentage(0.5)  // Child height depends on parent
+        }
+    }
+}
+```
+In this example:
+
+1. Parent component's height is set to `Fit`, waiting for child component height calculation
+2. Child component's height is set to 50% of parent height, waiting for parent height calculation
+3. Creates a cycle: parent waiting for child, child waiting for parent
+
+Parent-child circular dependency diagram
+
+```plaintext
+┌─ Parent (height: Fit) ─┐
+│     ?                  │
+│  ┌─ Child ─┐           │
+│  │  height:│           │
+│  │  50%    │   ?       │
+│  │  of ?   │           │
+│  └─────────┘           │
+└────────────────────────┘
+```
+
+### Sibling Component Circular Dependency
+
+```rust
+// Incorrect example: Sibling component circular dependency
+Container = <View> {
+    layout: {
+        flow: Right
+    },
+
+    <LeftView> {
+        walk: {
+            width: Fill,  // Left component fills remaining space
+            height: Fit
+        }
+    }
+
+    <RightView> {
+        walk: {
+            width: Fit,   // Right component width adapts to content
+            height: Fit
+        },
+        layout: {
+            flow: Down
+        }
+    }
+}
+
+```
+In this example:
+
+1. Left component wants to fill space excluding right component
+2. Right component's width depends on its content
+3. Layout engine cannot determine which component to calculate first
+
+## How to Avoid Circular Dependencies
+
+### 1. Explicit Size Constraints
+
+The safest approach is to provide explicit constraints for critical dimensions:
+
+```rust
+// Correct example: Explicit size constraints
+ParentView = <View> {
+    walk: {
+        width: Fill,
+        height: Fixed(500)  // Explicit parent height
+    },
+
+    <ChildView> {
+        walk: {
+            width: Fill,
+            height: Percentage(0.5)  // Now calculatable
+        }
+    }
+}
+```
+
+### 2. Using Fixed or Max/Min Constraints
+
+```rust
+Container = <View> {
+    layout: {
+        flow: Right
+    },
+
+    <LeftView> {
+        walk: {
+            width: Percentage(0.7),  // Fixed ratio
+            height: Fit
+        }
+    }
+
+    <RightView> {
+        walk: {
+            width: Fixed(200),  // Fixed width
+            height: Fit
+        }
+    }
+}
+```
+
+### 3. Layout Directional Principles
+
+Establishing correct layout direction can avoid many circular dependencies:
+
+```rust
+// Recommended layout direction
+GoodLayout = <View> {
+    layout: {
+        flow: Down  // Vertical layout makes size calculation more straightforward
+    },
+
+    <Header> {
+        walk: {
+            width: Fill,
+            height: Fixed(60)  // Fixed height header
+        }
+    }
+
+    <Content> {
+        walk: {
+            width: Fill,
+            height: Fill  // Fill remaining space
+        }
+    }
+
+    <Footer> {
+        walk: {
+            width: Fill,
+            height: Fit  // Footer height adapts to content
+        }
+    }
+}
+```
+
+## Layout Engine's Resolution Strategy
+
+When encountering potential circular dependencies, the Makepad layout engine employs these strategies:
+
+### 1. Priority Order
+
+- Fixed sizes calculate first
+- Fill calculations second
+- Fit calculations last
+
+### 2. Breaking Cycles
+
+- Uses default or minimum values for unresolvable cycles
+- Issues warnings in development mode
+
+### 3. Caching Mechanism
+
+- Caches calculated layout results
+- Avoids recalculating identical layouts

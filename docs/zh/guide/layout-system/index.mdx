@@ -1,0 +1,130 @@
+# 基本概念
+
+`Layout` 和 `Walk` 是 Makepad 布局系统中最核心的两个概念，它们共同决定了组件的布局行为。
+
+- **Walk**: 定义组件自身在父容器中"如何行走"，即如何确定自己的尺寸和位置
+- **Layout**: 定义组件作为容器"如何安排"其子组件的布局方式
+
+让我们通过一个形象的比喻来理解：
+
+- `Walk` 就像是一个人在房间里走动时需要决定自己占据多大空间、站在哪个位置
+- `Layout` 则像是这个人作为房间主人要如何安排客人们的座位
+
+这里使用 `Walk` 这个术语，是因为 `Turtle` Draw 是 Makepad 布局系统的核心机制,它的灵感来源于经典的海龟绘图(Turtle Graphics)。这种布局方式允许我们通过一个"海龟"在画布上行走（Walk）来确定组件的位置和尺寸。
+
+## 详细对比
+
+### Walk 属性
+
+```rust
+walk: {
+    width: Fill,      // 在父容器中的宽度行为
+    height: Fixed(50), // 在父容器中的高度行为
+    margin: {         // 与其他组件的间距
+        left: 10,
+        right: 10,
+        top: 5,
+        bottom: 5
+    }
+}
+```
+`Walk` 的关键特点：
+
+1. 面向外部 - 决定组件在父容器中如何定位
+2. 被动计算 - 尺寸由父容器和自身属性共同决定
+3. 边距控制 - 通过 margin 与其他组件保持距离
+
+### Layout 属性
+
+```rust
+layout: {
+    flow: Down,       // 子组件排列方向
+    spacing: 10,      // 子组件之间的间距
+    padding: {        // 内部留白
+        left: 10,
+        right: 10,
+        top: 5,
+        bottom: 5
+    },
+    align: {          // 子组件对齐方式
+        x: 0.5,       // 水平居中
+        y: 0.0        // 顶部对齐
+    }
+}
+```
+
+Layout 的关键特点：
+
+1. 面向内部 - 决定如何管理子组件
+2. 主动布局 - 直接控制子组件的排列
+3. 内部空间 - 通过 padding 控制内容区域
+
+## 协同工作机制
+
+让我们通过一个实例来看它们是如何协同工作的：
+
+```rust
+Container = <View> {
+    // 决定容器自身在父级中的表现
+    walk: {
+        width: Fill,        // 填充父容器宽度
+        height: Fit,        // 高度适应内容
+        margin: 10         // 四周留出10px间距
+    },
+
+    // 决定如何排列其子组件
+    layout: {
+        flow: Down,        // 子组件垂直排列
+        spacing: 5,        // 子组件间距5px
+        padding: 15,       // 内部留白15px
+        align: {x: 0.5}    // 子组件水平居中
+    },
+
+    // 子组件
+    <Button> {
+        walk: {
+            width: Fixed(100),  // 固定宽度100px
+            height: Fixed(40)   // 固定高度40px
+        }
+    }
+
+    <Button> {
+        walk: {
+            width: Fixed(100),
+            height: Fixed(40)
+        }
+    }
+}
+```
+
+布局计算过程：
+
+1. Container 的 Walk 确定自己在父容器中占据填充宽度，高度自适应
+2. Container 的 Layout 决定子组件垂直排列、居中对齐
+3. 每个 Button 的 Walk 确定自己是 100x40 的固定大小
+4. 最终 Container 的高度被计算为：
+    - padding.top (15px)
+    - Button1 高度 (40px)
+    - spacing (5px)
+    - Button2 高度 (40px)
+    - padding.bottom (15px)
+    - 总计：115px
+
+图示说明布局计算过程
+
+```plaintext
+┌─── Container(Fill × Fit) ───┐
+│    ┌── padding: 15px ──┐    │
+│    │   ┌─────────┐     │    │
+│    │   │ Button1 │     │    │
+│    │   └─────────┘     │    │
+│    │      5px          │    │
+│    │   ┌─────────┐     │    │
+│    │   │ Button2 │     │    │
+│    │   └─────────┘     │    │
+│    └───────────────────┘    │
+└─────────────────────────────┘
+    ↑     ↑          ↑      ↑
+ margin  对齐       flow   margin
+
+```

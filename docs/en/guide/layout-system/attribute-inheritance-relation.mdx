@@ -1,0 +1,34 @@
+# Layout Property Inheritance Relationships
+
+An important concept is the inheritance and override mechanism for layout properties.
+
+## Walk Properties Do Not Inherit
+
+- Each component must explicitly define its own Walk properties
+- Child component Walk properties are completely independent of parent components
+
+## Layout Properties Partially Inherit
+
+- `flow` direction influences child components' default behavior
+- `spacing` applies between sibling child components
+- `alignment` affects all child components' positioning
+
+```rust
+// Layout property inheritance example
+Parent = <View> {
+    layout: {
+        flow: Down,
+        align: {x: 0.5} // All child components default to horizontal center alignment
+    },
+
+    <Child1> {
+        // Inherits parent's flow and align
+    }
+
+    <Child2> {
+        layout: {
+            align: {x: 1.0} // Overrides inherited alignment, changes to right alignment
+        }
+    }
+}
+```

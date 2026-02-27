@@ -1,6 +1,6 @@
 import { type CSSProperties, memo } from "react";
 import { useI18n, useI18nUrl } from "../../../i18n";
-import styles from "./index.module.css";
+import styles from "./index.module.scss";
 
 const FullyFeatured = memo(() => {
     const t = useI18n();

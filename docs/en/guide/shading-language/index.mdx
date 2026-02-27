@@ -1,0 +1,186 @@
+# Shader Basic Concepts
+
+Makepad Shader is a custom MPSL shader language. MPSL can be compiled into shader languages like GLSL.
+
+> Recommended prerequisite learning: GLSL Shader Introduction Tutorial https://thebookofshaders.com/
+
+## What is a Shader
+
+Let's begin understanding shaders with a simple analogy. Imagine you're a painter facing an enormous canvas divided into millions of tiny squares (pixels).
+
+You have two tasks:
+
+1. Determine the position and size of each shape (Vertex Shader)
+2. Decide what color to fill in each square (Fragment/Pixel Shader)
+
+```rust
+// A basic Makepad shader
+MyFirstShader = {{MyFirstShader}} {
+    // 1. Vertex shader - handles position
+    fn vertex(self) -> vec4 {
+        // Place the shape in the correct position
+        let position = self.geom_pos * self.rect_size + self.rect_pos;
+        return self.camera_projection * vec4(position, 0.0, 1.0);
+    }
+
+    // 2. Fragment shader - handles color
+    fn pixel(self) -> vec4 {
+        // Color each pixel
+        return vec4(1.0, 0.0, 0.0, 1.0); // Red
+    }
+}
+```
+
+Let's visualize this process:
+
+```plaintext
+Vertex Shader Stage:          Pixel Shader Stage:
+
+   P1●─────●P2                 ░░░░░░░░
+     │     │                   ░██████░
+     │     │         =>        ░██████░
+     │     │                   ░██████░
+   P3●─────●P4                 ░░░░░░░░
+
+(Determine shape position)    (Fill each pixel)
+```
+
+## GPU vs CPU Rendering Differences
+
+Why use GPU rendering? Let's understand through an example:
+
+Imagine rendering a 1000×1000 pixel area:
+
+```plaintext
+CPU Rendering:
+- Process each pixel sequentially
+- 1 million pixels processed one at a time
+- Similar to filling with a single brush
+
+GPU Rendering:
+- Process many pixels in parallel
+- 1 million pixels processed simultaneously
+- Similar to covering with a spray gun
+```
+Visual representation::
+
+```plaintext
+CPU Rendering Progress:      GPU Rendering Progress:
+█░░░░░░░░░  10%              ▒▒▒▒▒▒▒▒▒▒  100%
+██░░░░░░░░  20%              (Processed simultaneously)
+███░░░░░░░  30%
+...
+```
+
+## Coordinate Systems in Detail
+
+In Makepad, we need to work with three main coordinate systems:
+
+### `Normalized Device Coordinates (NDC)`
+
+Range [-1,1], provides device-independent standardized space, ensuring consistent rendering results across different resolutions.
+
+- Use cases: When you need device-independent rendering or handling 3D transformations.
+- Examples: 3D rendering, view clipping, perspective projection, cross-device consistent rendering.
+
+### `Pixel Coordinates`
+
+ Actual screen pixels, used for precise positioning on screen, directly corresponding to physical display devices.
+
+- Use cases: When you need precise control over rendering target positions on screen.
+- Examples: Precise UI element positioning, pixel border drawing, text rendering alignment.
+
+### `UV Coordinates`：
+
+Range [0,1] texture coordinates, used for texture mapping and parametric surfaces, providing resolution-independent relative positioning.
+
+- Use cases: When you need to handle texture mapping or create parametric visual effects.
+- Examples: Texture mapping, gradient effects, UV animation, procedural texture generation, parametric shapes.
+
+### Code and diagrams to understand coordinate conversions
+
+```rust
+fn vertex(self) -> vec4 {
+    // 1. Mapping from geometric coordinates to pixel coordinates
+    let pixel_pos = self.geom_pos * self.rect_size + self.rect_pos;
+
+    // 2. Mapping from pixel coordinates to UV coordinates
+    self.uv = (pixel_pos - self.rect_pos) / self.rect_size;
+
+    // 3. Mapping from pixel coordinates to NDC
+    let ndc = self.camera_projection * vec4(pixel_pos, 0.0, 1.0);
+
+    return ndc;
+}
+```
+Coordinate system visualization:
+
+```plaintext
+Normalized Device         Pixel               UV
+Coordinates (NDC)      Coordinates         Coordinates
+     (-1,1)            (0,0)              (0,0)
+        ┃               ┃                   ┃
+        ┃               ┃                   ┃
+  ━━━━━━●━━━━━━   ━━━━━●━━━━━   ━━━━━━━●━━━━━━━
+        ┃               ┃                   ┃
+        ┃               ┃                   ┃
+     (1,-1)         (width,            (1,1)
+                    height)
+
+Coordinate mapping flowchart:
+
+Pixel Coords (100, 100)         UV Coords (0.5, 0.5)         NDC (0.0, 0.0)
+    ┌──────────┐               ┌──────────┐               ┌──────────┐
+    │(0,0)     │     ÷size     │(0,0)     │    *2-1       │(-1,1)    │
+    │          │ ────────────► │          │ ────────────► │          │
+    │   ●      │               │   ●      │               │   ●      │
+    │          │               │          │               │          │
+    │     (w,h)│               │     (1,1)│               │    (1,-1)│
+    └──────────┘               └──────────┘               └──────────┘
+
+Requirements Decision:
+┌────────────────────┐
+│Need pixel precision?│
+└─────────┬──────────┘
+          │
+    ┌─────┴─────┐
+    │   Yes     │     No
+    ▼           ▼
+Pixel      ┌──────────────┐
+Coords     │Need texture  │
+           │or gradients? │
+           └──────┬───────┘
+                  │
+             ┌────┴────┐
+             │  Yes    │     No
+             ▼         ▼
+          UV Coords  NDC Coords
+```
+## Colors and Pixels
+
+In Makepad, colors are represented using `vec4`, containing four RGBA channels:
+
+```rust
+fn pixel(self) -> vec4 {
+    //---------- Red  Green Blue Alpha
+    return vec4(1.0, 0.0,  0.0,  1.0);
+}
+```
+Color blending illustration:
+
+```plaintext
+Base Colors:          Alpha Blending:
+Red   (1,0,0)        ██ Opaque    (alpha = 1.0)
+Green (0,1,0)  +     ▒▒ Semi-transparent (alpha = 0.5)
+Blue  (0,0,1)        ░░ Transparent (alpha = 0.0)
+```
+
+The concept of Premultiplied Alpha:
+
+```rust
+// Regular RGBA
+vec4(1.0, 0.0, 0.0, 0.5) // Semi-transparent red
+
+// Premultiplied Alpha (recommended)
+vec4(0.5, 0.0, 0.0, 0.5) // RGB channels already multiplied by alpha
+```

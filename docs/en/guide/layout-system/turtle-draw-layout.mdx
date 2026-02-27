@@ -1,0 +1,187 @@
+# Turtle Draw Layout System
+
+## Basic Concepts
+
+The turtle layout system contains the following core concepts:
+
+```rust
+pub struct Turtle {
+    // Current turtle position
+    walk: Walk,         // Layout behavior
+    layout: Layout,     // Layout rules
+    wrap_spacing: f64,  // Wrapping spacing
+    align_start: usize, // Alignment start position
+    defer_count: usize, // Defer count
+    shift: DVec2,      // Offset amount
+    pos: DVec2,        // Current position
+    origin: DVec2,     // Starting position
+    width: f64,        // Width
+    height: f64,       // Height
+    width_used: f64,   // Width consumed
+    height_used: f64,  // Height consumed
+}
+```
+
+## Basic Drawing Process
+
+```rust
+// Start a turtle layout
+cx.begin_turtle(walk, layout);
+
+// Drawing process example
+turtle.move_to(10.0, 10.0);  // Move to specified position
+turtle.line_to(100.0, 100.0); // Draw line to specified position
+turtle.rect(0.0, 0.0, 50.0, 30.0); // Draw rectangle
+
+// End layout
+cx.end_turtle();
+```
+
+## Position Calculation Example
+
+```rust
+impl Turtle {
+    // Calculate next position
+    pub fn next_pos(&mut self, size: DVec2) -> DVec2 {
+        match self.layout.flow {
+            Flow::Right => {
+                let pos = self.pos;
+                self.pos.x += size.x + self.layout.spacing;
+                self.width_used = self.width_used.max(self.pos.x);
+                pos
+            }
+            Flow::Down => {
+                let pos = self.pos;
+                self.pos.y += size.y + self.layout.spacing;
+                self.height_used = self.height_used.max(self.pos.y);
+                pos
+            }
+            // ... Handle other flow directions
+        }
+    }
+}
+```
+
+## Complex Layout Examples
+
+### Nested Layouts
+
+```rust
+MyView = <View> {
+    // Outer turtle
+    walk: {width: Fill, height: Fit},
+    layout: {flow: Down, spacing: 10},
+
+    // Inner turtle
+    <View> {
+        walk: {width: Fill, height: Fit},
+        layout: {
+            flow: Right,
+            spacing: 5,
+            padding: {left: 10, right: 10}
+        },
+
+        // Content components
+        <Button> {}
+        <Button> {}
+    }
+}
+```
+
+### Defer Mechanism
+
+When layout needs to wait for certain conditions to be met, it can use deferred layout:
+
+```rust
+impl Turtle {
+    pub fn defer_walk(&mut self, walk: Walk) -> Option<DeferWalk> {
+        if walk.abs_pos.is_some() {
+            return None;
+        }
+
+        // Handle deferred layout logic
+        match self.layout.flow {
+            Flow::Right if walk.width.is_fill() => {
+                // Handle deferral in right-flowing layout
+                let spacing = self.child_spacing();
+                self.pos.x += spacing.x;
+                Some(DeferWalk::Unresolved{...})
+            }
+            // ... Handle other cases
+        }
+    }
+}
+```
+
+## Turtle Layout Alignment System
+
+### Alignment Calculation
+
+```rust
+pub struct AlignEntry {
+    align_range: TurtleAlignRange,
+    size: DVec2,
+    shift: f64,
+    index: usize
+}
+
+impl Cx2d {
+    pub fn align_items(&mut self) {
+        // Iterate through all items needing alignment
+        for item in &self.draw_align_list {
+            // Calculate alignment position
+            let shift = match self.layout.align {
+                Align::Center => {
+                    (self.width - item.size.x) * 0.5
+                },
+                // ... Handle other alignment types
+            };
+
+            // Apply alignment
+            self.shift_align_range(&item.align_range, shift);
+        }
+    }
+}
+```
+
+### Practical Alignment Example
+
+```rust
+CenteredContent = <View> {
+    layout: {
+        flow: Down,
+        align: {x: 0.5, y: 0.0}  // Horizontal center, top align
+    },
+
+    <Text> {
+        walk: {
+            width: Fit,
+            height: Fit
+        },
+        text: "Centered Text"
+    }
+}
+```
+## Turtle Performance Optimization
+
+**Caching Mechanism**
+
+```rust
+pub struct DrawStateWrap<T: Clone> {
+    state: Option<T>,
+    redraw_id: u64,
+}
+
+impl<T: Clone> DrawStateWrap<T> {
+    pub fn begin(&mut self, cx: &mut Cx2d, init: T) -> bool {
+        if self.redraw_id != cx.redraw_id() {
+            // Only update state when necessary
+            self.redraw_id = cx.redraw_id();
+            self.state = Some(init);
+            true
+        } else {
+            false
+        }
+    }
+}
+```

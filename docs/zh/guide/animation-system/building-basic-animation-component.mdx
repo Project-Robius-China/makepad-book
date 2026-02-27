@@ -1,0 +1,212 @@
+# 构建一个基本的动画组件
+
+## 基础结构设计
+
+```rust
+// 1. 首先声明组件结构
+#[derive(Live, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,          // 基础视图组件
+    #[animator] animator: Animator,  // 动画控制器
+
+    // 动画参数
+    #[live(0.65)] animation_duration: f64,
+    #[live(10.0)] swing_amplitude: f64,
+    #[live(3.0)] swing_base: f64,
+
+    // 运行时状态
+    #[rust] next_frame: Option<NextFrame>,
+    #[rust] animation_start_time: f64,
+    #[rust] is_animating: bool,
+}
+```
+
+这个结构为我们的动画组件提供了必要的基础设施。
+
+## 动画状态定义
+
+在 Makepad 中，我们使用 `live_design!` 宏来声明动画状态：
+
+```rust
+live_design! {
+    TypingAnimation = {{TypingAnimation}} {
+        // 基础属性配置
+        width: Fit,
+        height: Fit,
+
+        // 动画状态定义
+        animator: {
+	        // 动画状态组
+            circle1 = {
+                default: down,  // 默认状态
+                down = {       // 向下移动状态
+                    redraw: true,
+                    from: {all: Forward {duration: 0.325}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: 10.0} }}}
+                }
+                up = {        // 向上移动状态
+                    redraw: true,
+                    from: {all: Forward {duration: 0.325}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: 3.0} }}}
+                }
+            }
+        }
+    }
+}
+```
+
+在 Makepad 的 Live DSL 中，`animator` 是一个特殊的属性，用于定义组件的动画状态和行为。让我们深入了解它的语法和结构。
+
+- 动画状态组是一个命名空间，用于组织相关的动画状态。一个状态组就是一个动画轨道（track）。所以当你想要对同一个对象的不同属性进行动画时，需要为每个动画属性创建独立的 track。
+
+```rust
+animator: {
+    circle1_position = {  // 位置的 track
+        default: down,
+        down = { /* 控制位置的动画状态 */ }
+    }
+    circle1_opacity = {   // 透明度的 track
+        default: visible,
+        hidden = { /* 控制透明度的动画状态 */ }
+    }
+}
+```
+
+- 每个状态包含三个主要部分。
+    - **from** - 定义动画的时间特性
+    - **ease** - 定义动画的缓动函数
+    - **apply** - 定义状态的最终属性值
+
+```rust
+// from
+from: {
+    all: Forward {duration: 0.2}      // 正向播放一次
+    all: Reverse {                    // 反向播放一次
+        duration: 0.2,
+        end: 1.0
+    }
+    all: Loop {                       // 循环播放
+        duration: 0.2,
+        end: 1.0
+    }
+    all: BounceLoop {                 // 来回循环播放
+        duration: 0.2,
+        end: 1.0
+    }
+    all: Snap                         // 瞬间切换，无动画
+}
+// ease
+// - `OutQuad`/`OutCubic`: 适用于自然运动
+// - `InOutQuad`: 适用于可逆动画
+// - `Linear`: 适用于旋转等持续动画
+ease: Linear          // 线性
+ease: InQuad          // 二次方加速
+ease: OutQuad         // 二次方减速
+ease: InOutQuad       // 二次方加速减速
+ease: Bezier {        // 贝塞尔曲线
+    cp0: 0.0,
+    cp1: 0.0,
+    cp2: 1.0,
+    cp3: 1.0
+}
+
+// apply
+apply: {
+    opacity: 1.0,
+    scale: 1.2,
+    color: #f00,
+    position: vec2(100.0, 0.0)
+}
+```
+## 实现动画逻辑
+
+动画的核心在于状态管理和帧更新：
+
+```rust
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        match event {
+            Event::NextFrame(ne) => {
+                // 处理动画帧更新
+                if let Some(next_frame) = self.next_frame {
+                    if ne.set.contains(&next_frame) {
+                        self.update_animation(cx, ne.time);
+                        self.next_frame = Some(cx.new_next_frame());
+                    }
+                }
+            }
+            // ... 其他事件处理
+        }
+    }
+}
+```
+
+> 注意： Makepad 中实现动画要基于 NextFrame ，而非 Timer。因为 Timer 依赖于底层 OS API ，有跨平台的风险。
+
+在代码中触发动画的方法：
+
+```rust
+// 瞬间切换状态
+self.animator_cut(cx, &[id!(hover), id!(on)]);
+
+// 播放动画过渡到状态
+self.animator_play(cx, &[id!(hover), id!(on)]);
+
+// 根据条件切换状态
+self.animator_toggle(
+    cx,
+    is_hovered,                    // 条件
+    Animate::Yes,                  // 是否需要动画
+    &[id!(hover), id!(on)],       // 条件为真时的状态
+    &[id!(hover), id!(off)]       // 条件为假时的状态
+);
+```
+
+处理动画事件：
+
+```rust
+
+fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+    // 处理动画系统事件
+    if self.animator_handle_event(cx, event).must_redraw() {
+        // 动画需要重绘
+        self.redraw(cx);
+    }
+
+    // 检查动画状态
+    if self.animator_in_state(cx, &[id!(hover), id!(on)]) {
+        // 当前处于悬停状态
+    }
+}
+```
+
+## 动画控制接口
+
+为动画组件提供控制接口是良好实践：
+
+```rust
+impl TypingAnimationRef {
+    // 启动动画
+    pub fn start(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.start(cx);
+        }
+    }
+
+    // 停止动画
+    pub fn stop(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.stop(cx);
+        }
+    }
+
+    // 配置动画参数
+    pub fn set_animation_speed(&self, cx: &mut Cx, duration: f64) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.animation_duration = duration;
+        }
+    }
+}
+```

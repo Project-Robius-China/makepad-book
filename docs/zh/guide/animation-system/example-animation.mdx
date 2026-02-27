@@ -1,0 +1,430 @@
+# 完整动画实例
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    import makepad_widgets::base::*;
+    import makepad_widgets::theme_desktop_dark::*;
+    import crate::shared::styles::*;
+
+    ANIMATION_DURATION = 0.65
+    DEFAULT_SWING_TOP = 10.0
+    DEFAULT_SWING_BOTTOM = 3.0
+
+    // 1. Set the width and height to the same value.
+    // 2. Set the radius to half of the width/height.
+    EllipsisDot = <CircleView> {
+        width: 3
+        height: 3
+        draw_bg: {
+            radius: 1.5
+            color: (TYPING_NOTICE_TEXT_COLOR)
+        }
+    }
+
+    TypingAnimation = {{TypingAnimation}} {
+        width: Fit,
+        height: Fit,
+
+        // 添加可配置的动画参数
+        swing_amplitude: (DEFAULT_SWING_TOP), // 小球摆动的最大高度
+        swing_base: (DEFAULT_SWING_BOTTOM),   // 小球摆动的基础高度
+        animation_duration: (ANIMATION_DURATION), // 动画周期
+
+        flow: Down,
+        align: {x: 0.0, y: 0.5},
+
+        content = <View> {
+            width: Fit,
+            height: Fit,
+            spacing: 2,
+            circle1 = <EllipsisDot> {}
+            circle2 = <EllipsisDot> {}
+            circle3 = <EllipsisDot> {}
+        }
+
+        animator: {
+            circle1 = {
+                default: down,
+                down = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: (DEFAULT_SWING_TOP)} }}}
+                }
+                up = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: (DEFAULT_SWING_BOTTOM)} }}}
+                }
+            }
+
+            circle2 = {
+                default: down,
+                down = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle2 = { margin: {top: (DEFAULT_SWING_TOP)} }}}
+                }
+                up = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle2 = { margin: {top: (DEFAULT_SWING_BOTTOM)} }}}
+                }
+            }
+
+            circle3 = {
+                default: down,
+                down = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle3 = { margin: {top: (DEFAULT_SWING_TOP)} }}}
+                }
+                up = {
+                    redraw: true,
+                    from: {all: Forward {duration: (ANIMATION_DURATION * 0.5)}}
+                    ease: InOutQuad
+                    apply: {content = { circle3 = { margin: {top: (DEFAULT_SWING_BOTTOM)} }}}
+                }
+            }
+        }
+    }
+}
+
+#[derive(Live, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,
+    #[animator] animator: Animator,
+
+    #[live(0.65)] animation_duration: f64,
+    #[live(10.0)] swing_amplitude: f64,  // 摆动幅度
+    #[live(3.0)] swing_base: f64,       // 基础高度
+
+    #[rust] next_frame: Option<NextFrame>,
+    #[rust] animation_start_time: f64,
+    #[rust] current_animated_dot: CurrentAnimatedDot,
+
+    #[rust] initialized: bool, // 添加初始化标志
+    #[rust] is_animating: bool, // 添加动画状态标志
+}
+
+impl LiveHook for TypingAnimation {
+    fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        // 在组件完全应用后初始化
+        if !self.initialized {
+            self.initialized = true;
+        }
+    }
+}
+
+#[derive(Copy, Clone, Default)]
+enum CurrentAnimatedDot {
+    #[default]
+    Dot1,
+    Dot2,
+    Dot3,
+}
+impl CurrentAnimatedDot {
+    fn next(&self) -> Self {
+        match self {
+            Self::Dot1 => Self::Dot2,
+            Self::Dot2 => Self::Dot3,
+            Self::Dot3 => Self::Dot1,
+        }
+    }
+}
+
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // 先检查初始化
+        if self.initialized && !self.is_animating {
+            self.init(cx);
+        }
+
+        match event {
+            Event::NextFrame(ne) => {
+                // 检查是否是我们的 next_frame
+                if let Some(next_frame) = self.next_frame {
+                    if ne.set.contains(&next_frame) {
+                        let elapsed = ne.time - self.animation_start_time;
+                        if elapsed >= self.animation_duration * 0.5 {
+                            // 更新动画
+                            self.update_animation(cx, ne.time);
+                        }
+                        // 继续请求下一帧
+                        self.next_frame = Some(cx.new_next_frame());
+                    }
+                } else if self.initialized && !self.is_animating {
+                    // 如果组件已初始化但没有动画，重新开始动画
+                    self.animation_start_time = ne.time;
+                    self.next_frame = Some(cx.new_next_frame());
+                    self.update_animation(cx, ne.time);
+                    self.is_animating = true;
+                }
+            }
+            Event::WindowGeomChange(_) => {
+                self.reset_animation(cx);
+            }
+            _ => {}
+        }
+
+        if self.animator_handle_event(cx, event).must_redraw() {
+            self.redraw(cx);
+        }
+
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl TypingAnimation {
+
+    pub fn init(&mut self, cx: &mut Cx) {
+        self.animation_start_time = cx.seconds_since_app_start();
+        self.next_frame = Some(cx.new_next_frame());
+
+        if let Some(state) = &mut self.animator.state {
+            // 设置初始状态
+            state.push_live(live!{
+                state: {
+                    content: {
+                        circle1: { margin: { top: (self.swing_base) }},
+                        circle2: { margin: { top: (self.swing_base) }},
+                        circle3: { margin: { top: (self.swing_base) }}
+                    }
+                }
+            });
+        }
+
+        // 立即开始第一个动画
+        self.update_animation(cx, self.animation_start_time);
+        self.is_animating = true; // 设为 true,表示动画已经开始
+    }
+
+    fn reset_animation(&mut self, cx: &mut Cx) {
+        self.animation_start_time = cx.seconds_since_app_start();
+        self.next_frame = Some(cx.new_next_frame());
+        self.current_animated_dot = CurrentAnimatedDot::default();
+        self.is_animating = false;
+    }
+    pub fn update_animation(&mut self, cx: &mut Cx, time: f64) {
+        self.current_animated_dot = self.current_animated_dot.next();
+        self.animation_start_time = time;
+
+        match self.current_animated_dot {
+            CurrentAnimatedDot::Dot1 => {
+                // 构建状态节点
+                let mut up_nodes = LiveNodeVec::new();
+                up_nodes.push_live(live_object!{
+                    content: {
+                        circle1: {
+                            margin: {top: (self.swing_base)}
+                        }
+                    }
+                });
+
+                let mut down_nodes = LiveNodeVec::new();
+                down_nodes.push_live(live_object!{
+                    content: {
+                        circle3: {
+                            margin: {top: (self.swing_amplitude)}
+                        }
+                    }
+                });
+
+                // 更新动画状态
+                if let Some(state) = &mut self.animator.state {
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle1).as_field(), live_id!(up).as_field(), live_id!(apply).as_field()],
+                        &up_nodes
+                    );
+
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle3).as_field(), live_id!(down).as_field(), live_id!(apply).as_field()],
+                        &down_nodes
+                    );
+                }
+
+                self.animator_play(cx, id!(circle1.up));
+                self.animator_play(cx, id!(circle3.down));
+            }
+            CurrentAnimatedDot::Dot2 => {
+                let mut up_nodes = LiveNodeVec::new();
+                up_nodes.push_live(live_object!{
+                    content: {
+                        circle2: {
+                            margin: {top: (self.swing_base)}
+                        }
+                    }
+                });
+
+                let mut down_nodes = LiveNodeVec::new();
+                down_nodes.push_live(live_object!{
+                    content: {
+                        circle1: {
+                            margin: {top: (self.swing_amplitude)}
+                        }
+                    }
+                });
+
+                if let Some(state) = &mut self.animator.state {
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle2).as_field(), live_id!(up).as_field(), live_id!(apply).as_field()],
+                        &up_nodes
+                    );
+
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle1).as_field(), live_id!(down).as_field(), live_id!(apply).as_field()],
+                        &down_nodes
+                    );
+                }
+
+                self.animator_play(cx, id!(circle1.down));
+                self.animator_play(cx, id!(circle2.up));
+            }
+            CurrentAnimatedDot::Dot3 => {
+                let mut up_nodes = LiveNodeVec::new();
+                up_nodes.push_live(live_object!{
+                    content: {
+                        circle3: {
+                            margin: {top: (self.swing_base)}
+                        }
+                    }
+                });
+
+                let mut down_nodes = LiveNodeVec::new();
+                down_nodes.push_live(live_object!{
+                    content: {
+                        circle2: {
+                            margin: {top: (self.swing_amplitude)}
+                        }
+                    }
+                });
+
+                if let Some(state) = &mut self.animator.state {
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle3).as_field(), live_id!(up).as_field(), live_id!(apply).as_field()],
+                        &up_nodes
+                    );
+
+                    state.replace_or_insert_last_node_by_path(
+                        0,
+                        &[live_id!(circle2).as_field(), live_id!(down).as_field(), live_id!(apply).as_field()],
+                        &down_nodes
+                    );
+                }
+
+                self.animator_play(cx, id!(circle2.down));
+                self.animator_play(cx, id!(circle3.up));
+            }
+        };
+    }
+
+    pub fn start(&mut self, cx: &mut Cx) {
+        // 如果动画没在运行，就启动它
+        if !self.is_animating {
+            self.initialized = true;     // 确保初始化状态
+            self.is_animating = false;   // 临时设为 false，这样 handle_event 会重新启动动画
+            self.reset_animation(cx);    // 重置动画状态
+
+            // 强制立即开始一次动画循环
+            self.animation_start_time = cx.seconds_since_app_start();
+            self.next_frame = Some(cx.new_next_frame());
+            self.update_animation(cx, self.animation_start_time);
+        }
+    }
+
+    pub fn stop(&mut self, cx: &mut Cx) {
+        if self.is_animating {
+            self.is_animating = false;   // 停止动画循环
+            self.next_frame = None;      // 移除下一帧的请求
+
+            // 将所有点重置到基础位置
+            if let Some(state) = &mut self.animator.state {
+                state.push_live(live!{
+                    state: {
+                        content: {
+                            circle1: { margin: { top: (self.swing_base) }},
+                            circle2: { margin: { top: (self.swing_base) }},
+                            circle3: { margin: { top: (self.swing_base) }}
+                        }
+                    }
+                });
+            }
+            self.redraw(cx);  // 强制重绘以更新视觉状态
+        }
+    }
+
+}
+
+
+/// // 设置小幅度快速摆动
+/// typing_animation.set_swing_parameters(cx, 5.0, 2.0); // 小幅度
+/// typing_animation.set_animation_speed(cx, 0.3); // 更快的速度
+///
+/// // 设置大幅度慢速摆动
+/// typing_animation.set_swing_parameters(cx, 15.0, 3.0); // 大幅度
+/// typing_animation.set_animation_speed(cx, 1.0); // 更慢的速度
+impl TypingAnimationRef {
+    // 提供设置动画参数的方法
+    pub fn set_swing_parameters(&self, cx: &mut Cx, amplitude: f64, base: f64) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.swing_amplitude = amplitude;
+            inner.swing_base = base;
+            // 如果动画正在进行，需要重新应用参数
+            if inner.next_frame.is_some() {
+                let time = cx.seconds_since_app_start();
+                inner.update_animation(cx, time);
+            }
+        }
+    }
+
+    pub fn set_animation_speed(&self, cx: &mut Cx, duration: f64) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.animation_duration = duration;
+            // 如果动画正在进行，需要重新应用参数
+            if inner.next_frame.is_some() {
+                let time = cx.seconds_since_app_start();
+                inner.update_animation(cx, time);
+            }
+        }
+    }
+
+    pub fn start(&self, cx: &mut Cx) {
+        // self.set_swing_parameters(cx, 5.0, 2.0);
+        self.set_animation_speed(cx, 0.3);
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.start(cx);
+        }
+    }
+
+    pub fn stop(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.stop(cx);
+        }
+    }
+}
+```
+
+## 使用方法
+
+```rust
+let typing_animation = self.view.typing_animation(id!(typing_animation));
+// Start
+typing_animation.start(cx);
+// Stop
+typing_animation.stop(cx);
+```

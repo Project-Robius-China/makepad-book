@@ -1,0 +1,309 @@
+# Shader Animation
+
+## Animation State Machine in MPSL
+
+In MPSL, we can implement animation effects in several ways. Let's understand this through the example of a "typing" animation:
+
+> Typing animation: In some IM applications, when a user is typing, there's a "xxx is typing..." prompt followed by several dots that flash or bounce in sequence.
+
+```rust
+draw_bg: {
+    // 1. Control animation parameters through uniform variables
+    uniform freq: 5.0,        // Animation frequency
+    uniform phase_offset: 102.0,  // Phase difference
+    uniform dot_radius: 1.5,   // Dot radius
+
+    // 2. Implement animation logic in pixel shader
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // Calculate animation positions
+        let amplitude = self.rect_size.y * 0.22;  // Amplitude
+        let center_y = self.rect_size.y * 0.5;    // Center position
+
+        // Create periodic motion using sin function
+        // self.time is time parameter passed from Rust side
+        let y1 = amplitude * sin(self.time * self.freq) + center_y;
+        let y2 = amplitude * sin(self.time * self.freq + self.phase_offset) + center_y;
+        let y3 = amplitude * sin(self.time * self.freq + self.phase_offset * 2.0) + center_y;
+
+        // Draw dots using SDF
+        sdf.circle(self.rect_size.x * 0.25, y1, self.dot_radius);
+        sdf.fill(self.color);
+
+        sdf.circle(self.rect_size.x * 0.5, y2, self.dot_radius);
+        sdf.fill(self.color);
+
+        sdf.circle(self.rect_size.x * 0.75, y3, self.dot_radius);
+        sdf.fill(self.color);
+
+        return sdf.result;
+    }
+}
+```
+## Interpolation and Transitions in MPSL
+
+MPSL provides several built-in interpolation functions that we can use directly in shaders:
+
+```rust
+fn pixel(self) -> vec4 {
+    // 1. Linear interpolation
+    let linear_value = mix(start_value, end_value, self.time);
+
+    // 2. Smooth interpolation
+    let smooth_value = smoothstep(0.0, 1.0, self.time);
+
+    // 3. Custom easing function
+    fn custom_ease(t: float) -> float {
+        return t * t * (3.0 - 2.0 * t); // Smooth S-curve
+    }
+
+    // 4. Bezier curve interpolation
+    let bezier_value = Pal::bezier(
+        self.time,  // Time parameter
+        vec2(0.0, 0.0),  // P0
+        vec2(0.42, 0.0), // P1
+        vec2(0.58, 1.0), // P2
+        vec2(1.0, 1.0)   // P3
+    );
+}
+```
+
+Interpolation is crucial in animation because it:
+
+1. Creates smooth transition effects
+2. Simulates natural motion
+3. Controls animation speed and rhythm
+4. Implements various visual effects
+
+For example, when you want a button to smoothly change color when clicked, or want a menu to elegantly slide in and out, you need to use interpolation to create fluid animation effects.
+
+## Advanced Animation Techniques in MPSL
+
+```rust
+draw_bg: {
+    // 1. Use noise function to create random motion
+    fn noise_movement(pos: vec2, time: float) -> float {
+        return sin(pos.x * 10.0 + time) * cos(pos.y * 10.0 + time) * 0.5;
+    }
+
+    // 2. Use polar coordinates for rotation effects
+    fn rotate_point(p: vec2, angle: float) -> vec2 {
+        let s = sin(angle);
+        let c = cos(angle);
+        return vec2(
+            p.x * c - p.y * s,
+            p.x * s + p.y * c
+        );
+    }
+
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // 3. Combine multiple animation effects
+        let pos = self.pos - vec2(0.5);  // Center coordinates
+        let rot_pos = rotate_point(pos, self.time);  // Rotation
+        let noise = noise_movement(rot_pos, self.time);  // Add noise
+
+        // 4. Use SDF for shape morphing
+        let radius = 0.2 + noise * 0.1;
+        sdf.circle(rot_pos.x, rot_pos.y, radius);
+
+        // 5. Color animation
+        let color = mix(
+            #f00,  // Red
+            #0f0,  // Green
+            sin(self.time) * 0.5 + 0.5
+        );
+
+        sdf.fill(color);
+        return sdf.result;
+    }
+}
+```
+## Complete Typing Animation Code
+
+From Robrix project: https://github.com/project-robius/robrix/blob/main/src/shared/typing_animation.rs
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    import makepad_widgets::base::*;
+    import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
+
+    TypingAnimation = {{TypingAnimation}} {
+        width: 24,
+        height: 12,
+        flow: Down,
+        show_bg: true,
+        draw_bg: {
+            color: #x000
+            uniform freq: 5.0,  // Animation frequency
+            uniform phase_offset: 102.0, // Phase difference
+            uniform dot_radius: 1.5, // Dot radius
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let amplitude = self.rect_size.y * 0.22;
+                let center_y = self.rect_size.y * 0.5;
+                // Create three circle SDFs
+                sdf.circle(
+                    self.rect_size.x * 0.25,
+                    amplitude * sin(self.time * self.freq) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.5,
+                    amplitude * sin(self.time * self.freq + self.phase_offset) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.75,
+                    amplitude * sin(self.time * self.freq + self.phase_offset * 2) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                return sdf.result;
+            }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,
+    #[live] time: f32,
+    #[rust] next_frame: NextFrame,
+    #[rust] is_play: bool,
+}
+
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if let Some(ne) = self.next_frame.is_event(event) {
+            // ne.time is time increment in seconds
+            self.time += ne.time as f32;
+            self.time = (self.time.round() as u32 % 360) as f32;
+            self.redraw(cx);
+            if !self.is_play {
+                return
+            }
+            // Request next frame
+            self.next_frame = cx.new_next_frame();
+        }
+
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+impl TypingAnimationRef {
+    /// Starts animation of the bouncing dots.
+    pub fn animate(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = true;
+            inner.next_frame = cx.new_next_frame();
+        }
+    }
+    /// Stops animation of the bouncing dots.
+    pub fn stop_animation(&self) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = false;
+        }
+    }
+}
+```
+
+### Possible Extensions and Optimizations
+
+**Using Time in Shaders**
+
+```rust
+draw_bg: {
+    // We can process time in different ways to create various animation effects
+    fn pixel(self) -> vec4 {
+        // 1. Cyclic time - creates periodic animations
+        let cycle_time = fract(self.time);  // Constrains time between 0-1
+
+        // 2. Bounce time - creates bouncing effects
+        let bounce_time = abs(sin(self.time));
+
+        // 3. Accumulative time - creates continuously growing effects
+        let grow_time = self.time;  // Continuously increasing value
+
+        // 4. Delayed time - creates sequential animations
+        let delay_time = max(self.time - 1.0, 0.0); // Starts after 1 second
+    }
+}
+```
+**Converting User Gestures to Shader Parameters**
+
+```rust
+draw_bg: {
+    // Gesture parameters
+    uniform touch_pos: vec2,  // Touch position
+    uniform touch_strength: float,  // Touch intensity
+
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // Calculate distance to touch point
+        let dist_to_touch = distance(self.pos, self.touch_pos);
+
+        // Create ripple effect
+        let ripple = sin(dist_to_touch * 50.0 - self.time * 5.0)
+            * exp(-dist_to_touch * 3.0)  // Decay
+            * self.touch_strength;        // Intensity
+
+        // Apply ripple distortion
+        let distorted_pos = self.pos + ripple * 0.1;
+
+        // Draw distorted shape
+        sdf.circle(
+            distorted_pos.x * self.rect_size.x,
+            distorted_pos.y * self.rect_size.y,
+            10.0
+        );
+    }
+}
+```
+
+Optimization tips:
+
+```rust
+// Optimized time update logic
+fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+    if let Some(ne) = self.next_frame.is_event(event) {
+        // Limit update frequency
+        if ne.time > 1.0/60.0 {  // Maximum 60fps
+            self.time += 1.0/60.0;
+        } else {
+            self.time += ne.time;
+        }
+
+        // Only request next frame when necessary
+        if self.is_animating {
+            self.next_frame = cx.new_next_frame();
+        }
+    }
+}
+
+// MPSL optimization
+draw_bg: {
+    // Precalculate commonly used values
+    fn pixel(self) -> vec4 {
+        // Cache calculation results
+        let base_animation = sin(self.time);
+
+        // Reuse calculation results
+        let effect1 = base_animation * 0.5;
+        let effect2 = base_animation * 0.3;
+        let effect3 = base_animation * 0.2;
+    }
+}
+```

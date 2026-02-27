@@ -1,0 +1,239 @@
+# Live DSL Coding Guideline
+
+## Naming Conventions
+
+### Component Type Naming
+
+- Use PascalCase for component types
+- Name with functional nouns that indicate semantics
+
+```rust
+// Good
+Button = {{Button}} { }
+DropDownList = {{DropDownList}} { }
+ScrollView = {{ScrollView}} { }
+
+// Bad
+button = {{button}} { }
+dropdownlist = {{dropdownlist}} { }
+scroll_view = {{scroll_view}} { }
+```
+### Instance Property Naming
+
+- Use PascalCase when the instance is a reusable UI component that needs referencing
+- Use snake_case when the instance is a layout container or decorative element
+
+```rust
+Dialog = {{Dialog}} {
+    // Use PascalCase for interactive components that need referencing
+    OkButton = <Button> { }
+    CancelButton = <Button> { }
+
+    // Use snake_case for layout containers
+    content_area = <View> {
+        header = <View> { }
+        body = <View> { }
+        footer = <View> { }
+    }
+}
+```
+### Field Property Naming
+
+Use snake_case for all field properties
+
+```rust
+Button = {{Button}} {
+    // Good
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+    // Bad
+    backgroundColor: #fff,
+    BorderWidth: 1.0,
+    cornerRadius: 4.0,
+}
+```
+
+## Indentation and Spacing
+
+### Indentation
+
+- Use 4 spaces for indentation
+- Increase indentation level for each nesting level
+
+```rust
+Container = {{View}} {
+    width: Fill,
+    height: Fill,
+
+    Header = <View> {
+        height: 60,
+
+        Title = <Label> {
+            text: "Hello"
+        }
+    }
+}
+```
+
+### Spacing and Line Breaks
+
+- Add one space after property colons
+- Add one space before and after curly braces
+- Separate instances with blank lines
+- Group related field properties together
+
+```rust
+Container = {{View}} {
+    // Layout-related properties grouped together
+    width: Fill,
+    height: Fill,
+    flow: Down,
+    spacing: 10,
+
+    // Visual-related properties grouped together
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+
+    // Separate child instances with blank lines
+    Header = <View> {
+        height: 60
+    }
+
+    Content = <View> {
+        flow: Down
+    }
+
+    Footer = <View> {
+        height: 40
+    }
+}
+```
+
+
+## Property Ordering
+
+It is recommended to organize properties in the following order:
+
+1. Layout properties (width, height, margin, etc.)
+2. Visual properties (color, border, etc.)
+3. Behavioral properties (cursor, grab_key_focus, etc.)
+4. Animation properties (animator)
+5. Child component instances
+
+```rust
+Button = {{Button}} {
+    // 1. Layout properties
+    width: 100,
+    height: 40,
+    margin: {left: 10, right: 10},
+
+    // 2. Visual properties
+    background_color: #fff,
+    border_width: 1.0,
+    corner_radius: 4.0,
+
+    // 3. Behavioral properties
+    cursor: Pointer,
+    grab_key_focus: true,
+
+    // 4. Animation properties
+    animator: {
+        hover = {
+            default: off
+        }
+    },
+
+    // 5. Child component instances
+    Icon = <Icon> { },
+
+    Label = <Label> { }
+}
+```
+
+## Component Structure
+
+### Basic Component Definition
+
+- Use double curly brace syntax for basic components
+- Component name must match implementation
+
+```rust
+// Basic component definition
+Button = {{Button}} { }
+Label = {{Label}} { }
+```
+
+### Component Inheritance and Composition
+
+- Use angle bracket syntax for inheritance
+- Use instance properties for composition
+
+```rust
+// Inheritance
+PrimaryButton = <Button> {
+    background_color: #2196f3
+}
+// Composition
+CardView = {{View}} {
+    header = <View> { }
+    content = <View> { }
+}
+```
+
+## Comment Standards
+
+### Component Comments
+
+- Add descriptive comments before component definitions
+- Explain component purpose and important properties
+
+```rust
+// Primary action button
+// Supports size: small | medium | large
+// Supports variant: contained | outlined | text
+PrimaryButton = <Button> {
+    background_color: #2196f3
+}
+```
+### Group Comments
+
+- Use comments to group related properties
+
+```rust
+Dialog = {{Dialog}} {
+    // -------- Layout --------
+    width: 400,
+    height: 300,
+
+    // -------- Visual --------
+    background_color: #fff,
+    shadow_color: #0007,
+
+    // -------- Components --------
+    Header = <View> { }
+    Content = <View> { }
+}
+```
+
+## Patterns and Best Practices
+
+### Reusable Components
+
+- Extract reusable styles and layouts into separate components
+- Use inheritance to extend base components
+
+```rust
+// Base card component
+Card = {{View}} {
+    background_color: #fff,
+    corner_radius: 4.0,
+    shadow_color: #0007
+}
+// Specific purpose card
+ProductCard = <Card> {
+    width: 200,
+    height: 300
+}
+```

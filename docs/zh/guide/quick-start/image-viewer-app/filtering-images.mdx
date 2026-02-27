@@ -1,0 +1,285 @@
+# 17 - 过滤图片 
+
+在上一步中，我们在图片网格上方的菜单栏添加了一个搜索框，使得基于查询字符串过滤图片成为可能。
+
+回顾一下，我们的步骤分为两部分：
+
+- 首先，我们在图片网格上方的菜单栏添加搜索框。  
+- 然后，我们更新应用的状态，根据搜索框中的查询内容过滤图片。
+
+这一步，我们将更新应用的状态，实现根据搜索框查询过滤图片。
+
+> **注意**：如果你不想自己敲代码，可以在这里找到本步骤的完整代码：https://github.com/makepad/image_viewer/tree/main/step_17
+
+## 更新 State 结构体  
+
+我们先从更新 `State` 结构体开始，加入我们需要的状态以便进行图片过滤。
+
+在 `app.rs` 中，找到 `State` 结构体的定义，将其替换为下面的代码：
+
+```rust
+#[derive(Debug)]
+pub struct State {
+    image_paths: Vec<PathBuf>,
+    filtered_image_idxs: Vec<usize>,
+    max_images_per_row: usize,
+    current_image_idx: Option<usize>,
+}
+```
+
+这段内容扩展了 `State` 结构体，增加了如下字段：
+
+- `filtered_image_idxs`：包含指向 `image_paths` 的索引列表。
+
+这里的思路是增加一层间接引用。以前，我们直接遍历或索引 `image_paths`；现在，我们改为遍历或索引 `filtered_image_idxs`，然后用这些索引去访问 `image_paths`。这样我们就能定义一个过滤后的图片子集进行显示，同时保持原始图片列表不变。
+
+> **注意**：为了减少混淆，我们采用以下命名规范：
+> - 以前，`image_idx` 指的是用于索引 `image_paths` 的索引。
+> - 现在，`image_idx` 指的是用于索引 `filtered_image_idxs` 的索引。
+> - 我们使用 `filtered_image_idx` 来指代 `filtered_image_idxs` 中的索引，只有这些索引才能用于访问 `image_paths`。
+
+### 更新 State 结构体的 Default Trait 实现  
+
+我们还需要更新 `State` 结构体的 `Default` trait 实现，以反映新增的字段。
+
+在 `app.rs` 中，找到 `State` 结构体对应的 `Default` trait 实现，替换为下面的代码：
+
+```rust
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            image_paths: Vec::new(),
+            filtered_image_idxs: Vec::new(),
+            images_per_row: 4,
+            current_image_idx: None,
+        }
+    }
+}
+```
+
+### 更新 State 结构体的 num_images 方法  
+
+最后，我们需要更新 `State` 结构体的 `num_images` 方法，使其返回 `filtered_image_idxs` 中元素的数量（因为我们将绘制这些过滤后的图片数量）。
+
+在 `app.rs` 中，找到 `State` 结构体的 `num_images` 方法定义，替换为下面的代码：
+
+```rust
+    fn num_images(&self) -> usize {
+        self.filtered_image_idx.len()
+    }
+```
+
+现在我们已经拥有了过滤图片所需的全部信息。
+
+## 添加辅助方法  
+
+为了让后续代码更易编写，我们将为 `App` 结构体添加一些辅助函数，同时更新部分已有函数。
+
+### 添加 filter_image_paths 方法  
+
+我们先定义一个 `filter_image_paths` 方法。该方法将根据查询字符串过滤图片路径列表。
+
+在 `app.rs` 中，找到 `App` 结构体的 `impl` 块，添加以下代码：
+
+```rust
+    pub fn filter_image_paths(&mut self, cx: &mut Cx, query: &str) {
+        self.state.filtered_image_idxs.clear();
+        for (image_idx, image_path) in self.state.image_paths.iter().enumerate()
+        {
+            if image_path.to_str().unwrap().contains(&query) {
+                self.state.filtered_image_idxs.push(image_idx);
+            }
+        }
+        if self.state.filtered_image_idxs.is_empty() {
+            self.set_current_image(cx, None);
+        } else {
+            self.set_current_image(cx, Some(0));
+        }
+    }
+```
+
+`filter_image_paths` 方法的功能说明：
+
+- 首先，它会清空 `filtered_image_idxs` 中已有的索引。
+- 接着，它遍历所有的 `image_paths`。
+- 对于每个路径：
+   - 检查该路径是否匹配查询字符串。
+   - 如果不匹配，则跳过该路径。
+   - 如果匹配，则将该路径的索引添加到 `filtered_image_idxs` 中。
+
+### 更新 set_current_image 方法  
+
+接下来，我们需要更新 `set_current_image` 方法，使其针对过滤后的图片进行操作。
+
+请在 `app.rs` 中，找到 `App` 结构体的 `set_current_image` 方法定义，替换为下面的代码：
+
+```rust
+    fn set_current_image(&mut self, cx: &mut Cx, image_idx: Option<usize>) {
+        self.state.current_image_idx = image_idx;
+
+        let image = self.ui.image(id!(slideshow.image));
+        if let Some(image_idx) = self.state.current_image_idx {
+            let filtered_image_idx = self.state.filtered_image_idxs[image_idx];
+            let image_path = &self.state.image_paths[filtered_image_idx];
+            image
+                .load_image_file_by_path_async(cx, &image_path)
+                .unwrap();
+        } else {
+            image
+                .load_image_dep_by_path(cx, self.placeholder.as_str())
+                .unwrap();
+        }
+        self.ui.redraw(cx);
+    }
+```
+
+这里唯一改变的部分是以下这段代码：
+
+```rust
+    let filtered_image_idx = self.state.filtered_image_idxs[image_idx];
+    let image_path = &self.state.image_paths[filtered_image_idx];
+    image
+        .load_image_file_by_path_async(cx, &image_path)
+        .unwrap();
+```
+
+这段代码的作用是：
+
+- 使用当前图片索引（`image_idx`）获取对应的过滤后图片索引（`filtered_image_idx`）。
+- 使用这个过滤后的图片索引去获取对应的图片路径。
+- 使用该路径重新加载图片。
+
+这正是我们之前所说的：不再直接索引 `image_paths`，而是先索引 `filtered_image_idxs`，再用它们的值去索引 `image_paths`。
+
+这个改动的最终效果是，幻灯片放映只会显示经过过滤后的图片。
+
+### 更新 load_image_paths 方法  
+
+接下来，我们需要更新 `load_image_paths` 方法，使其在加载图片路径后执行图片过滤。
+
+请在 `app.rs` 中，找到 `App` 结构体的 `load_image_paths` 方法定义，替换为下面的代码：
+
+```rust
+    fn load_image_paths(&mut self, cx: &mut Cx, path: &Path) {
+        self.state.image_paths.clear();
+        for entry in path.read_dir().unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            self.state.image_paths.push(path);
+        }
+
+        let query = self.ui.text_input(id!(query)).text();
+        self.filter_image_paths(cx, &query);
+    }
+```
+
+之前，在方法末尾有以下四行代码：
+
+```rust
+    if self.state.image_paths.is_empty() {
+        self.set_current_image(cx, None);
+    } else {
+        self.set_current_image(cx, Some(0));
+    }
+```
+
+这些代码现在被替换成了：
+
+```rust
+    let query = self.ui.text_input(id!(query)).text();
+    self.filter_image_paths(cx, &query);
+```
+
+这段代码的作用是：
+
+- 获取搜索框中的当前查询字符串。
+- 使用当前查询字符串调用 `filter_image_paths` 方法对图片路径列表进行过滤。
+
+这样做的目的是：每当图片列表更新时，都需要重新执行过滤。由于当前显示的图片基于过滤后的列表，因此设置当前图片的操作已在 `filter_image_paths` 方法中完成，这里就不再需要单独设置了。
+
+## 更新绘制代码  
+
+最后，我们更新绘制代码以使用新的状态。
+
+请在 `app.rs` 中，找到 `ImageRow` 结构体对应的 `Widget` trait 实现中的 `draw_walk` 方法定义，替换为下面的代码：
+
+```rust
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+                let row_idx = *scope.props.get::<usize>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_images_for_row(row_idx));
+                while let Some(item_idx) = list.next_visible_item(cx) {
+                    if item_idx >= state.num_images_for_row(row_idx) {
+                        continue;
+                    }
+
+                    let item = list.item(cx, item_idx, live_id!(ImageItem));
+                    let image_idx =
+                        state.first_image_idx_for_row(row_idx) + item_idx;
+                    let filtered_image_idx =
+                        state.filtered_image_idxs[image_idx];
+                    let image_path = &state.image_paths[filtered_image_idx];
+                    let image = item.image(id!(image));
+                    image
+                        .load_image_file_by_path_async(cx, &image_path)
+                        .unwrap();
+                    item.draw_all(cx, &mut Scope::empty());
+                }
+            }
+        }
+        DrawStep::done()
+    }
+```
+
+代码虽然比较多，但这里其实只有一个地方发生了变化：
+
+```rust
+    let filtered_image_idx =
+        state.filtered_image_idxs[image_idx];
+    let image_path = &state.image_paths[filtered_image_idx];
+```
+
+这和我们之前在 `set_current_image` 方法里做的一样：不再直接索引 `image_paths`，而是先通过 `filtered_image_idxs` 索引，再用该索引去访问 `image_paths`。
+
+这个改动的最终效果是，图片网格只显示过滤后的图片。
+
+## 处理事件
+
+接下来，我们将更新事件处理代码，来响应用户在搜索框中搜索图片的行为。
+
+在 `app.rs` 下，`App` 结构体中，找到 `handle_actions` 方法，加入以下代码:
+
+```rust
+if let Some(query) = self.ui.text_input(id!(query)).changed(&actions) {
+        self.filter_image_paths(cx, &query);
+    }
+```
+
+这段代码的含义是，当组件 `TextInput` 中的内容发生变化时，我们获取到其中的内容 `query`，并且调用我们定义好的 `filter_image_paths` 来找到对应的图片。
+
+## 检查到目前为止的进度  
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你现在应该可以通过在顶部的搜索框中输入内容来过滤图片了：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Filtering%20Images.png)
+
+## 下一步
+
+至此，我们已经完成了整个应用程序的所有功能。接下来，我们会扩展一些内容，为我们的应用程序增加一些交互。

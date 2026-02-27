@@ -1,0 +1,192 @@
+#  Drawing Basic Shapes
+
+## Geometric Primitives and Transformations
+
+Before starting to draw complex shapes, we need to understand the basic building blocks. In computer graphics, all complex shapes are ultimately built from basic primitives.
+
+### Basic Primitive Types
+
+```rust
+// 1. Point
+fn draw_point(self) -> vec4 {
+    let point_size = 5.0;
+    // In pixel shader we need to check if we're within point range
+    let distance = length(self.pos - vec2(0.5));
+    return vec4(1.0, 0.0, 0.0, step(distance, point_size));
+}
+
+// 2. Line segment
+fn draw_line(self) -> vec4 {
+    let line_width = 2.0;
+    let p1 = vec2(0.0, 0.0);
+    let p2 = vec2(1.0, 1.0);
+    // Calculate distance from point to line
+    let dist = distance_to_line(self.pos, p1, p2);
+    return vec4(0.0, 1.0, 0.0, step(dist, line_width));
+}
+
+// 3. Triangle
+fn draw_triangle(self) -> vec4 {
+    let vertices = [
+        vec2(0.0, 0.0),
+        vec2(1.0, 0.0),
+        vec2(0.5, 1.0)
+    ];
+    // Check if point is inside triangle
+    let inside = point_in_triangle(self.pos, vertices);
+    return vec4(0.0, 0.0, 1.0, inside);
+}
+```
+视觉表示：
+
+```plaintext
+Point     Line Segment      Triangle
+
+●         ●               ▲
+         ╱               ╱ ╲
+        ●               ╱   ╲
+                       ▔▔▔▔▔▔▔
+```
+### Coordinate Transformations
+
+You'll need to perform various operations on these shapes: moving their position, rotating their angle, changing their size. This is where transformation matrices come in - mathematical tools that precisely describe these operations.
+
+Understanding transformation matrices is fundamental to handling graphics. There are three basic transformations:
+
+1. Translation Transform
+
+```rust
+fn translate(pos: vec2, offset: vec2) -> vec2 {
+    // Simple vector addition
+    return pos + offset;
+}
+```
+
+2. Rotation Transform
+
+```rust
+fn rotate(pos: vec2, angle: float) -> vec2 {
+    let s = sin(angle);
+    let c = cos(angle);
+    return vec2(
+        pos.x * c - pos.y * s,
+        pos.x * s + pos.y * c
+    );
+}
+```
+
+3. Scale Transform
+
+```rust
+fn scale(pos: vec2, scale: vec2) -> vec2 {
+    // Component multiplication
+    return pos * scale;
+}
+```
+
+## Distance Field Technique
+
+Distance Fields are a core technology in Makepad for achieving high-quality graphics rendering. Let's understand it in depth:
+
+### What is a Distance Field?
+
+A distance field is a function that tells us the shortest distance from any point in space to a shape's boundary:
+
+- Points inside the shape have negative distance
+- Points on the shape's boundary have zero distance
+- Points outside the shape have positive distance
+
+```rust
+fn circle_sdf(pos: vec2, center: vec2, radius: float) -> float {
+    // 计算到圆心的距离，减去半径
+    return length(pos - center) - radius;
+}
+```
+It's useful to think of distance fields as a stack of semi-transparent circles. In this distance field, pure white areas (value of 1) are on the object. Pure black areas are farthest from the object. Gray areas in between have values from 0 to 1. This is a way to visualize distances between 0 and 1.
+
+![](https://trusted-heron-8b2.notion.site/image/https%3A%2F%2Fprod-files-secure.s3.us-west-2.amazonaws.com%2Fee83deb1-85d6-437c-894c-b4353fce458b%2Fb654cd01-0266-4898-b679-e27e8e801332%2FPasted_image_20241201074137.png?table=block&id=15369449-ef79-80d5-847b-eacab00cc02e&spaceId=ee83deb1-85d6-437c-894c-b4353fce458b&width=900&userId=&cache=v2)
+
+`Signed Distance Fields (SDF)` are three-dimensional scalar fields where each point's value represents the distance to the nearest surface. These distance values have a "signed" characteristic:
+
+- **Positive values**: Point is outside the object, indicating distance to the nearest surface
+- **Negative values**: Point is inside the object, negative value indicates distance to surface
+- **Zero values**: Point is exactly on the object's surface
+
+This way, SDFs provide not only the nearest distance from any point to an object's surface but also distinguish whether points are inside or outside the object.
+
+### Drawing Shapes Using Signed Distance Fields
+
+**Signed Distance Fields (SDF)** are based on several key concepts:
+
+- **Voxel**: A small cubic unit in 3D space, used to partition the entire 3D space. In SDFs, we calculate the shortest distance from each voxel to the object's surface.
+- **Distance Field**: A field where each point's value represents the shortest distance to an object's surface. A distance field can be signed or unsigned.
+- **Trilinear Interpolation**: Method used to estimate SDF values at arbitrary points on a voxel grid in 3D space. Trilinear interpolation calculates by linearly interpolating between neighboring voxel values.
+
+## SDF Viewport Introduction (Sdf2d::viewport)
+
+```rust
+let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+```
+
+1. `self.pos`: This is the current pixel coordinate in the shader, typically ranging from 0.0 to 1.0. It represents the relative position of the pixel we're processing within the entire drawing area.
+2. `self.rect_size`: This is the actual size of the rectangle we want to draw (in pixels).
+3. `self.pos * self.rect_size`: This multiplication converts normalized coordinates to actual pixel coordinates.
+
+Imagine we're drawing a button that's 200x100 pixels. The entire conversion process can be divided into three key stages:
+
+### 1. Initial Coordinate System (self.pos)
+
+```plaintext
+┌─────────────────┐
+│(0,0)            │
+│                 │
+│      (0.5,0.5)  │
+│                 │
+│         (1,1)   │
+└─────────────────┘
+Normalized coordinates: Range is 0.0 to 1.0
+```
+
+### 2. Multiply by Size (self.pos * self.rect_size)
+
+```plaintext
+┌─────────────────────┐
+│(0,0)                │
+│                     │
+│      (100,50)       │
+│                     │
+│           (200,100) │
+└─────────────────────┘
+Pixel coordinates: Now coordinates represent actual pixel positions
+rect_size = (200,100)
+```
+
+### 3. SDF Viewport (Sdf2d::viewport)
+
+```plaintext
+┌─────────────────────┐ ↑
+│(-100,-50)           │ │
+│                     │ 100px
+│      (0,0)          │ │
+│                     │ │
+│         (100,50)    │ ↓
+└─────────────────────┘
+←——— 200px ———→
+Centered coordinates: Origin at center
+```
+
+To better understand this transformation process, let's see how specific coordinate points are transformed:
+
+```plaintext
+Position    Normalized Coords  Pixel Coords    SDF Coords
+Top-left    (0.0, 0.0)        (0, 0)          (-100, -50)
+Center      (0.5, 0.5)        (100, 50)       (0, 0)
+Bottom-right (1.0, 1.0)       (200, 100)      (100, 50)
+```
+
+The benefits of this coordinate transformation are:
+
+1. **Precise Positioning**: Can precisely control the rendering of each pixel
+2. **Scale Independence**: Can easily handle UI elements of different sizes
+3. **Centered Operations**: Makes many graphical operations (like rotation) simpler
+4. **Anti-aliasing**: Makes edge rendering smoother

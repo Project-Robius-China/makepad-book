@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { defineConfig } from '@rspress/core';
+import { defineConfig } from 'rspress/config';
 
 // plugins
 import mermaid from 'rspress-plugin-mermaid';
@@ -26,36 +26,39 @@ export default defineConfig({
   },
   markdown: {
     showLineNumbers: true,
-    link: {
-      checkDeadLinks: true,
-    },
-    shiki: {
-      langAlias: {
-        rs: 'rust',
-      },
-    },
+    checkDeadLinks: true,
+    highlightLanguages:[['rs', 'rust']]
   },
   route: {
     cleanUrls: true,
   },
-  locales: [
-    {
-      lang: 'zh',
-      label: '简体中文',
-    },
-    {
-      lang: 'en',
-      label: 'English',
-    }
-  ],
   themeConfig: {
     enableContentAnimation: true,
-    editLink: {
-      docRepoBaseUrl:
-        'https://github.com/Project-Robius-China/makepad-book/tree/main/docs',
-    },
     socialLinks: [
       { icon: 'github', mode: 'link', content: 'https://github.com/Project-Robius-China/makepad-book' },
     ],
+    locales: [
+      {
+        lang: 'zh',
+        label: '简体中文',
+        editLink: {
+          docRepoBaseUrl:
+            'https://github.com/Project-Robius-China/makepad-book/tree/main/docs',
+          text: '📝 在 GitHub 上编辑此页',
+        },
+        searchNoResultsText: '未搜索到相关结果',
+        searchPlaceholderText: '搜索文档',
+        searchSuggestedQueryText: '可更换不同的关键字后重试',
+      },
+      {
+        lang: 'en',
+        label: 'English',
+        editLink: {
+          docRepoBaseUrl:
+            'https://github.com/Project-Robius-China/makepad-book/tree/main/docs',
+          text: '📝 Edit this page on GitHub',
+        },
+      }
+    ]
   },
 });

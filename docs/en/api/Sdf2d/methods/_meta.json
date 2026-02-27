@@ -1,0 +1,24 @@
+[
+    {
+        "type": "dir",
+        "name": "bool",
+        "label": "bool"
+    },
+    {
+        "type": "dir",
+        "name": "draw",
+        "label": "draw"
+    },
+    {
+        "type": "dir",
+        "name": "effects",
+        "label": "effects"
+    },
+    {
+        "type": "dir",
+        "name": "transform",
+        "label": "transform"
+    },
+    "clear",
+    "viewport"
+]

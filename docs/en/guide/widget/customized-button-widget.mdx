@@ -1,0 +1,217 @@
+# Custom Widget
+
+Let's create a custom Button component.
+
+Complete code with comments is as follows:
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    // Define a common button style
+    // Inherit from Button
+    MyButton = {{MyButton}} <Button> {
+        width: 200, // Button width
+        height: 50, // Button height
+        margin: {left: 20, right: 20}, // Button left and right margins
+
+        text: "My Button", // Button text
+        draw_text: {
+            color: #ffffff // Text color is white
+        },
+
+        draw_bg: {
+            // Here define at most 6 instances, otherwise will report subtract with overflow
+            instance background_color: #0000ff, // Background color
+            instance hover_color: #0055ff, // Mouse hover color
+            instance pressed_color: #00008B, // Mouse pressed color
+
+            instance border_width: 1.0, // Border width
+            instance border_color: #00f3ff, // Border color
+
+            instance glow: 0.0, // Glow effect control
+            instance hover: 0.0, // Control mouse hover effect
+            instance pressed: 0.0, // Control mouse pressed effect
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+                // Calculate scale and offset
+                let scale = 1.0 - self.pressed * 0.04; // Slightly shrink when pressed
+                let size = self.rect_size * scale; 
+                let offset = (self.rect_size - size) * 0.5; // Center
+
+                // Draw outer glow
+                sdf.box(
+                    offset.x,
+                    offset.y,
+                    size.x,
+                    size.y,
+                    9.0            // Slightly larger corner radius
+                );
+
+                // Glow effect - use semi-transparent border color
+                let glow_alpha = self.glow * 0.5; // Control glow intensity
+                sdf.fill_keep(vec4(self.border_color.xyz, glow_alpha)); 
+
+
+                // Simplify drawing, keep only the main body
+                sdf.box(
+                    offset.x,
+                    offset.y,
+                    size.x,
+                    size.y,
+                    8.0
+                );
+
+                // Show shadow when not pressed, reduce shadow when pressed
+                let shadow_alpha = (1.0 - self.pressed) * 0.2; 
+                sdf.fill_keep(vec4(0.,0.,0.,shadow_alpha));
+
+                // Base color
+                let base_color = self.background_color;
+
+                // Hover effect achieved by reducing opacity, not directly modifying color
+                let hover_alpha = self.hover * 0.2;
+                let color_with_hover = mix(
+                    base_color, 
+                    vec4(1.0, 1.0, 1.0, 1.0),
+                    hover_alpha
+                );
+
+                // Pressed effect
+                let final_color = mix(
+                    color_with_hover,
+                    self.pressed_color,
+                    self.pressed
+                );
+
+                // Fill the main body color first
+                sdf.fill_keep(final_color);
+
+                // Border glow effect  
+                let border_glow = max(self.hover * 0.5, self.glow);
+                let border_color = mix(
+                    self.border_color,
+                    vec4(1.0, 1.0, 1.0, 0.8), 
+                    border_glow
+                );
+                sdf.stroke(border_color, self.border_width);
+
+                return sdf.result
+            }
+        }
+    }
+}
+
+
+// Define component structure
+#[derive(Live,Widget)]
+pub struct MyButton {
+    // Inherit all Button functionality
+    #[deref]
+    button: Button,
+    #[rust]
+    initialized: bool, // Mark whether initialized
+}
+
+impl LiveHook for MyButton {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        log!("MyButton: after_new_from_doc");
+        self.initialized = true; // Mark as initialized after creation
+        self.button.after_new_from_doc(cx);
+        log!("button text is empty? {:?}", self.button.text.as_ref())
+    }
+
+    fn before_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        log!("MyButton: before_apply");
+        self.button.before_apply(cx, apply, index, nodes);
+    }
+
+    fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        log!("MyButton: after_apply");
+        self.button.after_apply(cx, apply, index, nodes);
+    }
+}
+
+
+impl Widget for MyButton {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        log!("MyButton handle_event");
+        log!("MyButton not initialized!");
+        self.button.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        log!("MyButton draw_walk");
+        self.initialized = true; 
+        log!("MyButton initialized!");
+        self.button.draw_walk(cx, scope, walk)
+    }
+}
+
+impl MyButtonRef {
+    pub fn clicked(&self, actions: &Actions) -> bool {
+        self.borrow().map(|button| button.button.clicked(actions)).unwrap_or(false)
+    }
+
+    pub fn apply_over(&self, cx: &mut Cx, nodes: LiveNodeSlice) {
+        if let Some(mut inner) = self.borrow_mut() {
+            log!("Applying style to MyButton");
+            // Apply style to inner button
+            inner.button.apply_over(cx, nodes);
+            // Ensure redraw
+            inner.button.redraw(cx);
+        } else {
+            log!("Failed to borrow MyButton - this may indicate an initialization problem");
+        }
+    }
+
+    pub fn set_text_and_redraw(&self, cx: &mut Cx, text: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.button.set_text_and_redraw(cx, text);
+            inner.button.redraw(cx);
+        }
+    }
+
+    // Add check method
+    pub fn is_some(&self) -> bool {
+        self.borrow().is_some()
+    }
+}
+```
+In summary, this code defines a highly customizable button component `MyButton` with rich visual effects like glow, shadows, hover state changes, etc.
+
+It inherits from `Button`'s functionality and adds initialization checks and helper methods. The button's style can be easily defined through the `live_design!` macro.
+
+- The `live_design!` macro defines the style and properties of the button, including.
+    - Button size, margins
+    - the text content and color of the button
+    - The background color of the button, including the color of the normal, hover, and pressed states.
+    - The width and color of the button's border
+    - Button's light effect, hover effect, press the effect of the control variables
+    - button drawing function pixel (), a detailed definition of how to draw the various parts of the button, including light, shadow, body color, border and so on.
+- The MyButton structure defines the button component, which inherits all the functionality of the Button and adds an `initialized` field to mark it as initialized or not.
+- Implements the `LiveHook` trait, which defines the behavior of the component during different lifecycles.
+    - `after_new_from_doc()`: sets `initialized` to true after creation to indicate initialization.
+    - `before_apply()` and `after_apply()`: perform actions before and after applying attributes.
+- Widget traits are implemented that define the event handling and drawing behavior of the component.
+    - `handle_event()`: Handles events.
+    - `draw_walk()`: draws the component.
+- Implemented methods for `MyButtonRef`.
+    - `clicked()`: Checks if the button was clicked.
+    - `apply_over()`: applies styles to the button
+    - `set_text_and_redraw()`: sets the button text and redraws it.
+    - `is_some()`: Checks if the button exists.
+
+Special note: The main Live attribute markers for defining Widgets are as follows:
+
+- `#[live]` - Indicates this property can be accessed and modified in DSL
+- `#[rust]` - Indicates this property is only used in Rust code
+- `#[calc]` - Indicates this is a calculated property
+- `#[live(default)]` - Property with default value
+- `#[deref]` - Indicates inheritance of another component's properties

@@ -1,0 +1,174 @@
+# 12 - 处理事件  
+在上一步中，我们为应用添加了更多状态，以使幻灯片更加动态。
+
+回顾我们的计划：
+
+- 首先，我们添加更多状态。
+- 然后，使用这些状态来响应用户事件。
+
+我们已经添加了状态，现在将使用它来处理用户事件。
+
+> **注意**：如果你不想手动输入代码，可以在这里找到本步骤的所有代码：https://github.com/makepad/image_viewer/tree/main/step_12
+
+## 你将学到的内容  
+
+- Makepad 中事件与动作的流程是如何工作的。  
+- 如何响应用户事件。
+
+## 添加辅助方法  
+
+为了让后续代码更易编写，我们将为 App 结构体添加更多辅助函数。
+
+在 `app.rs` 文件中，添加以下代码到 App 结构体的 impl 块中：
+
+```rust
+    pub fn navigate_left(&mut self, cx: &mut Cx) {
+        if let Some(image_idx) = self.state.current_image_idx {
+            if image_idx > 0 {
+                self.set_current_image(cx, Some(image_idx - 1));
+            }
+        }
+    }
+
+    pub fn navigate_right(&mut self, cx: &mut Cx) {
+        if let Some(image_idx) = self.state.num_images() {
+            if image_idx + 1 < self.state.image_paths.len() {
+                self.set_current_image(cx, Some(image_idx + 1));
+            }
+        }
+    }
+```
+
+这些方法的作用如下：
+
+- `navigate_left` 会先将 `current_image_idx` 减 1，除非已经是第一张图片。
+- `navigate_right` 会先将 `current_image_idx` 加 1，除非已经是最后一张图片。
+- 两个方法都会调用 `set_current_image` 来应用更改，并安排幻灯片重绘。
+
+## 事件-动作流程  
+
+我们刚刚添加了几个辅助方法，用来方便在运行时更新幻灯片。下一步是将这些方法连接起来，使得当用户与 UI 交互时（点击幻灯片中的按钮，或者按键盘上的左右方向键），这些方法能够被调用。为此，我们将使用一种叫做“动作”（actions）的机制。
+
+动作是通知某个控件（widget）发生了有趣事件的通知。例如，Button 控件有一个 clicked 动作，当按钮被点击时，它会向应用的其他部分发送该通知。
+
+相比之下，Makepad 中的事件（event）是用户进行了某种操作的通知。例如，用户点击鼠标按钮时，会触发一个 mouse-down 事件，并发送给应用。
+
+下面是 Makepad 中事件-动作流程的工作原理：
+
+- 事件被派发给应用，通知应用用户执行了某个操作。
+- 事件从应用根节点向下传播，传递到控件树的最底层。
+- 当事件到达一个准备处理它的控件时，该控件会：
+   - 根据事件更新自身状态。
+   - 可能派发一个动作，通知应用的其他部分该控件发生了有趣的事情。
+- 动作从控件向上传播，直到应用的根节点。
+- 树中更高层的控件可以监听并响应这些动作。
+
+这种模式有助于将底层的输入处理与高层的 UI 行为分离开来。
+
+## 实现 `MatchEvent` Trait  
+
+为了处理我们应用中的动作，我们可以使用 `MatchEvent` trait。
+
+`MatchEvent` trait 提供了几个可以重写的方法，这些方法会在特定事件发生时被调用。当你在 `MatchEvent` trait 上调用 `match_event` 方法并传入一个事件时，它会自动将该事件转发给对应的方法。
+
+我们将从在 App 结构体的 `handle_event` 方法中添加对 `match_event` 的调用开始：
+
+在 `app.rs` 文件中，用下面的代码替换 App 结构体的 `AppMain` trait 实现：
+
+```rust
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        self.match_event(cx, event);
+        self.ui
+            .handle_event(cx, event, &mut Scope::with_data(&mut self.state));
+    }
+}
+```
+
+接下来，我们将为 App 结构体实现 `MatchEvent` trait。对于我们的使用场景，重点关注的方法是 `handle_actions`。
+
+请在 `app.rs` 中添加以下代码：
+
+```rust
+impl MatchEvent for App {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        if self.ui.button(id!(navigate_left)).clicked(&actions) {
+            self.navigate_left(cx);
+        }
+        if self.ui.button(id!(navigate_right)).clicked(&actions) {
+            self.navigate_right(cx);
+        }
+
+        if let Some(event) =
+            self.ui.view(id!(slideshow.overlay)).key_down(&actions)
+        {
+            match event.key_code {
+                KeyCode::ArrowLeft => self.navigate_left(cx),
+                KeyCode::ArrowRight => self.navigate_right(cx),
+                _ => {}
+            }
+        }
+    }
+}
+```
+
+让我们更详细地看看这段代码的作用。
+
+### 处理按钮点击事件  
+
+以下代码：
+
+```rust
+    if self.ui.button(id!(navigate_left)).clicked(&actions) {
+        self.navigate_left(cx);
+    }
+    if self.ui.button(id!(navigate_right)).clicked(&actions) {
+        self.navigate_right(cx);
+    }
+```
+
+这段代码会检查幻灯片中的某个按钮是否被点击。如果是，它会调用相应的辅助方法（`navigate_left` 或 `navigate_right`）来更新幻灯片。
+
+> 注意：当一个或多个动作由某个控件触发时，会派发一个包含这些动作列表的动作事件。当对 MatchEvent trait 调用 `match_event` 方法并传入动作事件时，会导致 `handle_actions` 方法被调用，并传入触发的动作列表。为了处理动作，每个控件都会提供一个或多个辅助方法，比如上面 Button 上的 `clicked` 方法。当你使用动作列表调用该方法时，它会检查列表中是否有动作表示按钮被点击，如果有则返回 `true`。
+
+### 处理按键事件  
+
+以下代码：
+
+```rust
+    if let Some(event) =
+        self.ui.view(id!(slideshow.overlay)).key_down(&actions)
+    {
+        match event.key_code {
+            KeyCode::ArrowLeft => self.navigate_left(cx),
+            KeyCode::ArrowRight => self.navigate_right(cx),
+            _ => {}
+        }
+    }
+```
+
+这段代码会检查幻灯片覆盖层是否具有键盘焦点，并且是否按下了左箭头或右箭头键。如果是，它会调用相应的辅助方法（`navigate_left` 或 `navigate_right`）来更新幻灯片。
+
+## 检查目前的进度  
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你应该会看到和之前一样的幻灯片播放效果。
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Slideshow%20Image%201.png)
+
+不过这一次，点击左右两边的按钮应该分别导航幻灯片到上一张或下一张图片。或者，按键盘上的左箭头或右箭头键也应产生相同的效果：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Slideshow%20Image%202.png)
+
+## 下一步
+  
+我们现在已经有了一个相当不错的幻灯片实现。它可以显示真实的图片，并且能响应用户事件，比如按钮点击和鼠标点击，从而导航到上一张或下一张图片。
+
+我们暂时先保持幻灯片的现状。在接下来的几个步骤中，我们将实现能够在图片查看器和幻灯片之间切换的功能。

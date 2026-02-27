@@ -1,0 +1,115 @@
+# Core Concepts
+
+### Core Widget Traits
+
+#### `WidgetNode` Trait
+
+```rust
+pub trait WidgetNode: LiveApply {
+    // Main methods
+    fn uid_to_widget(&self, uid: WidgetUid) -> WidgetRef;
+    fn find_widgets(&self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet);
+    fn walk(&mut self, cx: &mut Cx) -> Walk;
+    fn area(&self) -> Area;
+    fn redraw(&mut self, cx: &mut Cx);
+    // Other default implementations
+}
+```
+This is the foundational trait for all Widgets:
+
+- Find Widget based on UID
+- Find Widgets based on path
+- Calculate layout position and size
+- Manage drawing areas
+- Trigger redraws
+
+#### `Widget` Trait
+
+```rust
+pub type DrawStep = Result<(), WidgetRef>;
+
+pub trait Widget: WidgetNode {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope);
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep;
+
+    // Other default implementations
+}
+```
+
+This trait extends WidgetNode, adding:
+
+- Event handling system
+- Drawing process control
+
+### Widget References and Management
+
+#### `WidgetRef`
+
+WidgetRef is a smart pointer wrapper for Widgets.
+
+```rust
+pub struct WidgetRefInner {
+    pub widget: Box<dyn Widget>,
+}
+
+pub struct WidgetRef(Rc<RefCell<Option<WidgetRefInner>>>);
+
+// Key methods
+impl WidgetRef {
+    // Other methods
+    // Event handling
+    pub fn handle_event(&self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        // ...
+    }
+
+    // Drawing
+    pub fn draw(&mut self, cx: &mut Cx2d, scope: &mut Scope) -> DrawStep {
+        // ...
+    }
+
+    // Get mutable reference to underlying Widget
+    pub fn borrow_mut<T: 'static + Widget>(&self) -> Option<RefMut<'_, T>> {
+        // ...
+    }
+
+    // Basic find method
+    pub fn find_widgets(&self, path: &[LiveId], cached: WidgetCache, results: &mut WidgetSet) {
+        if let Some(inner) = self.0.borrow().as_ref() {
+            inner.widget.find_widgets(path, cached, results)
+        }
+    }
+}
+```
+- Uses `Rc<RefCell>` to provide reference counting and interior mutability
+- Supports `Clone` and thread safety
+- Safe Widget access through `borrow/borrow_mut`
+
+#### `WidgetCache`
+
+WidgetCache is an important performance optimization mechanism in the Makepad UI framework. It's a parameter that traverses the entire component tree, controlling whether components enable, clear, or bypass caching at each layer.
+
+This is important for improving large UI performance because it can:
+
+- Avoid repeated component tree traversal
+- Force latest state retrieval when needed
+- Clear invalid caches when component states change
+
+```rust
+// Typical call chain:
+widget.widget(&path)
+  -> widget.find_widgets(path, WidgetCache::Yes)  // High-level API defaults to using cache
+    -> child_widget.find_widgets(path, cached)    // Continue passing cache parameter down
+      -> grandchild.find_widgets(path, cached)    // Cache strategy needs to be consistent
+```
+
+#### `WidgetSet`
+
+WidgetSet is a collection of WidgetRefs.
+
+```rust
+pub struct WidgetSet(pub SmallVec<[WidgetRef;2]>);
+```
+
+- Efficiently manages multiple Widget references
+- Supports batch operations and lookups
+- Uses SmallVec to optimize memory usage in small-scale scenarios

@@ -1,0 +1,38 @@
+# 0 - 简介
+
+在本教程中，我们将使用 Makepad 构建一个图像查看器应用。
+
+我们的图像查看器应用将支持图像网格视图和幻灯片视图，并且可以在两者之间切换。到本教程结束时，图像网格视图将如下所示：  
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/ImageBrowser.png)
+
+而幻灯片视图将如下所示：  
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Slideshow%20Image%201.png)
+
+此外，我们的应用还将提供基于查询字符串的图像筛选功能。
+
+本教程的目标是帮助我们熟悉 Makepad 这个 UI 框架。在构建应用的过程中，我们将接触到开发 Makepad 应用的大部分核心概念。完成本教程后，你应该对如何构建属于自己的 Makepad 应用有一个比较清晰的认识。
+
+## 教程准备工作
+
+Makepad 是使用 Rust 编写的，因此我们需要确保系统中已经安装了 Rust。推荐的安装方式是使用 Rust 官方的工具链安装器 Rustup。你可以在终端中运行以下命令来安装，并按照屏幕上的提示进行操作：
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+## Linux 的额外设置
+
+在 Windows 和 Mac 上，Makepad 可以直接运行。但在 Linux 上，我们需要先安装一些依赖项。
+
+如果你使用的是 Ubuntu，可以通过在终端中运行以下命令来安装所需依赖：
+
+```bash
+apt-get install clang
+apt-get install libaudio-dev
+apt-get install libpulse-dev
+apt-get install libx11-dev
+apt-get install libxcursor-dev
+```
+

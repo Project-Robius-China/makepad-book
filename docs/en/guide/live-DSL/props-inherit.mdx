@@ -1,0 +1,235 @@
+# Inheritance
+
+Inherited component instances can:
+
+1. Override parent component properties
+2. Add new properties
+3. Extend with new child component instances
+
+```rust
+// Base card component
+Card = {{MyView}} {
+    // Base properties
+    background_color: #fff,
+    corner_radius: 4.0,
+    shadow_color: #0007,
+
+    // Base layout
+    flow: Down,
+    spacing: 10
+}
+
+// Product card extension
+ProductCard = <Card> {
+    // 1. Override parent component properties
+    background_color: #f5f5f5,  // Override background color
+    corner_radius: 8.0,         // Override corner radius
+
+    // 2. Add new properties
+    width: 200,
+    height: 300,
+    border_width: 1.0,         // Add border
+
+    // 3. Add child components
+    image_container = <View> {
+        height: 160
+    }
+
+    title = <Label> {
+        text_wrap: Word,
+        color: #333
+    }
+
+    price = <Label> {
+        color: #f00,
+        font_size: 18
+    }
+
+    buy_button = <Button> {
+        width: Fill,
+        label: "Buy Now"
+    }
+}
+
+// Can be further inherited and extended
+FeaturedProductCard = <ProductCard> {
+    // Override properties
+    height: 350,
+    background_color: #fff0f0,
+
+    // Add new components
+    badge = <Label> {
+        text: "Featured",
+        background_color: #f00,
+        color: #fff
+    }
+}
+```
+In Live DSL, ProductCard = \<Card\> typically represents "referencing" a component.
+
+Live inheritance system characteristics:
+
+## Inheritance method
+
+### 1. Property Inheritance
+
+```rust
+ParentView = {{View}} {
+    color: #f00,
+    spacing: 10
+}
+
+ChildView = <ParentView> {
+    // Inherits color and spacing
+    // Overrides color
+    color: #00f,
+    // Adds new property
+    margin: 20
+}
+```
+
+### 2. Layout Inheritance
+
+```rust
+CardBase = {{View}} {
+    flow: Down,
+    spacing: 10,
+
+    header = <View> {
+        height: 50
+    }
+}
+
+CustomCard = <CardBase> {
+    // Inherits layout properties
+    // Modifies child component
+    header = <View> {
+        height: 60,
+        background_color: #f00
+    }
+}
+```
+
+### 3. Animation Inheritance
+
+```rust
+ButtonBase = {{Button}} {
+    animator: {
+        hover = {
+            default: off
+            on = {
+                apply: {color: #f00}
+            }
+        }
+    }
+}
+
+CustomButton = <ButtonBase> {
+    // Inherits animation
+    animator: {
+        // Adds new animation state
+        pressed = {
+            default: off
+            on = {
+                apply: {scale: 0.9}
+            }
+        }
+    }
+}
+```
+
+### 4. Event Handling Inheritance
+
+```rust
+ClickableView = {{View}} {
+    cursor: Pointer,
+    grab_key_focus: true
+}
+
+InteractiveCard = <ClickableView> {
+    // Inherits interaction behavior
+    // Adds visual feedback
+    animator: {
+        pressed = {
+            default: off
+            on = {
+                apply: {
+                    background_color: #eee
+                }
+            }
+        }
+    }
+}
+```
+## Creating New Components Through Inheritance
+
+```rust
+live_design!{
+    // Define a common button style
+    // Inherit from Button
+    MyButton = {{MyButton}} <Button> {
+        width: 200,
+        height: 50,
+        margin: {left: 20, right: 20},
+
+        text: "My Button",
+        draw_text: {
+            color: #ffffff
+        },
+    }
+}
+
+#[derive(Live,Widget)]
+pub struct MyButton {
+    // Inherit all Button functionality
+    #[deref]
+    button: Button,
+    #[rust]
+    initialized: bool,
+}
+```
+Note this syntax: `MyButton = {{MyButton}} <Button>`, which creates your own `MyButton` component by inheriting from the existing `Button` Widget.
+
+This approach is suitable when extending existing components.
+
+## Inheritance Usage Guidelines
+
+1. Keep inheritance hierarchy shallow. Avoid deep inheritance chains for easier understanding of component relationships.
+2. Use clear naming conventions. Base components use `Base/Common` prefix, variants use functionality-related names.
+3. Use inheritance judiciously. Not all components need inheritance; sometimes direct creation is more appropriate.
+
+## Rust Struct Inheritance
+
+The #[deref] attribute macro in Rust structs:
+
+```rust
+struct DrawWave {
+    #[deref] draw_super: DrawQuad,  // Inherit DrawQuad's fields and methods
+    #[live] gain: f32,
+    #[live] vu_left: f32,
+}
+```
+This is a compile-time Rust trait implementation mechanism:
+
+- Uses `makepad_derive_widget` macro to generate `Deref/DerefMut` trait implementation for `DrawQuad`
+- Allows `DrawWave` to directly access `DrawQuad`'s fields and methods
+- Represents a Rust language-level "delegation/inheritance" pattern (using Deref to simulate inheritance is an anti-pattern, but works well in the Makepad framework)
+
+Using both together:
+
+```rust
+// Rust-level base component implementation
+struct Button {
+    #[deref] draw_super: DrawQuad, // Inherit drawing capabilities
+    #[live] color: Vec4
+}
+
+// Live DSL-level component customization
+DefaultButton = <Button> {  // Reference and override properties
+    color: #f00
+}
+```
+Key differences between `#[deref]` and referencing component instances in Live DSL:
+
+1. `#[deref]` is a Rust compile-time type system feature used to implement basic component functionality inheritance and method delegation.
+2. Live DSL component referencing is primarily used for creating component structures.

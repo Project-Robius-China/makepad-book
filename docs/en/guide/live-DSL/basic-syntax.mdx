@@ -1,0 +1,121 @@
+# Syntax
+
+## Properties
+
+Properties are used for data binding. In Live DSL, properties are primarily divided into two categories:
+
+- Field properties (`:`), typically used to define inherent or structural properties of the type declaration, these properties are part of the type definition
+- Instance properties (`=`), typically used to define inherited or overridden properties
+
+### Field Properties
+
+Defined using a colon (:), typically used to define a component's inherent properties:
+
+```rust
+MyWidget = {{Widget}} {
+    // Field property examples
+    color: #f00,         // Color property
+    width: 100,         // Numeric property
+    visible: true,      // Boolean property
+    name: "button",     // String property
+    padding: {          // Nested field property
+        left: 10,
+        right: 10
+    }
+}
+```
+**Field Property Characteristics**:
+
+- Used to define component's basic properties and state
+- Values directly map to Rust struct fields
+- Uses colon `:` to separate key and value
+- Can be inherited and overridden by child components
+- Generally used to define component's static configuration
+
+### Instance Properties
+
+Defined using the equals sign (=), typically used to define variable or dynamic properties:
+
+```rust
+Container = {{View}} {
+    // Instance property examples
+    Button1 = <Button> {  // Create Button instance
+        width: 100,
+        label: "Click me"
+    }
+
+    Panel = <View> {     // Create View instance
+        flow: Down,
+        Button2 = <Button> {
+            width: 200
+        }
+    }
+}
+```
+Instance property characteristics:
+
+- Used to create child component instances
+- Uses equals sign `=` for assignment
+- Typically used with `<ComponentType>` syntax
+- Can be nested to form component trees
+- Instances are created as actual component objects at runtime
+- Used to build component hierarchy
+
+### Relationship Between Properties
+
+Both types work together to create components:
+
+```rust
+MyComponent = {{Component}} {
+    // Field properties - define component's own attributes
+    width: Fill,
+    color: #f00,
+
+    // Instance properties - create child components
+    Header = <View> {
+        height: 50
+    }
+
+    Content = <View> {
+        // Field properties
+        flow: Down,
+        spacing: 10,
+
+        // Nested instance properties
+        button1 = <Button> {
+            label: "OK"
+        }
+        button2 = <Button> {
+            label: "Cancel"
+        }
+    }
+}
+
+// Field properties map to struct fields
+#[derive(Live)]
+pub struct Component {
+    #[live] pub width: Size,    // Corresponds to width: Fill
+    #[live] pub color: Vec4,    // Corresponds to color: #f00
+}
+
+// Instance properties create new component instances
+impl Widget for Component {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // Can access child instances through button()
+        let button = self.button(id!(button1));
+        button.handle_event(cx, event);
+    }
+}
+```
+
+#### **Key Differences**
+
+- Field properties (`:`) define component attributes and configuration
+- Instance properties (`=`) create component instances and hierarchy
+- Field properties map to Rust struct fields
+- Instance properties create actual component objects
+- Field properties can be inherited, instance properties form new component tree nodes
+
+Instance properties create actual component objects at runtime that can be accessed via template IDs, while field properties directly affect the component's own property values.
+
+Understanding the distinction between these two property types is crucial for correctly using Live DSL to build interfaces. Field properties are for configuration, while instance properties are for organizing component structure.

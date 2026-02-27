@@ -1,0 +1,180 @@
+# Detailed Shading Techniques
+
+## Colors and Gradients
+
+Before diving deep into color handling in shaders, let's first establish a fundamental understanding of how colors work in computer graphics.
+
+### Basic Color Representation
+
+In Makepad shaders, we use `vec4` (RGBA vector) to represent colors:
+
+- Red: `0.0` to `1.0`
+- Green: `0.0` to `1.0`
+- Blue: `0.0` to `1.0`
+- Alpha (transparency): `0.0` (completely transparent) to `1.0` (completely opaque)
+
+```rust
+// Basic solid color shader
+fn pixel(self) -> vec4 {
+    // Format: vec4(red, green, blue, alpha)
+    return vec4(1.0, 0.0, 0.0, 1.0); // Pure red
+}
+```
+
+### Linear Gradients
+
+Linear gradients create smooth transitions between two colors. Here's an implementation of a horizontal gradient:
+
+```rust
+fn pixel(self) -> vec4 {
+    // self.pos.x provides horizontal position from 0.0 to 1.0
+    let mix_factor = self.pos.x;
+
+    let color1 = vec4(1.0, 0.0, 0.0, 1.0); // Red
+    let color2 = vec4(0.0, 0.0, 1.0, 1.0); // Blue
+
+    // Linear interpolation between two colors
+    return mix(color1, color2, mix_factor);
+}
+```
+Visual representation:
+
+```plaintext
+Red [================>] Blue
+        <- mix factor ->
+```
+
+For diagonal gradients, we can implement it like this:
+
+```rust
+fn pixel(self) -> vec4 {
+    // Combine x and y coordinates for diagonal direction
+    let mix_factor = (self.pos.x + self.pos.y) * 0.5;
+
+    let color1 = vec4(1.0, 0.0, 0.0, 1.0); // Red
+    let color2 = vec4(0.0, 0.0, 1.0, 1.0); // Blue
+
+    return mix(color1, color2, mix_factor);
+}
+```
+### Radial Gradients
+
+Radial gradients create color transitions that spread outward from a center point:
+
+```rust
+fn pixel(self) -> vec4 {
+    // Calculate distance from center point
+    let center = vec2(0.5, 0.5);
+    let dist = length(self.pos - center);
+
+    // Convert distance to mix factor
+    let mix_factor = clamp(dist * 2.0, 0.0, 1.0);
+
+    let inner_color = vec4(1.0, 1.0, 1.0, 1.0); // White at center
+    let outer_color = vec4(0.0, 0.0, 0.0, 1.0); // Black at edge
+
+    return mix(inner_color, outer_color, mix_factor);
+}
+```
+## Texture Mapping
+
+Texture mapping is the technique of applying 2D images to geometric surfaces.
+
+### Basic Texture Sampling
+
+```rust
+DrawTexture = {{DrawTexture}} {
+    texture tex: texture2d // Declare texture uniform
+
+    fn pixel(self) -> vec4 {
+        // Sample texture at current position
+        return sample2d(self.tex, self.pos);
+    }
+}
+```
+### UV Coordinate System
+
+UV coordinates are used to map texture pixels to geometry:
+
+```plaintext
+(0,0) +-----------+ (1,0)
+      |           |
+      |  Texture  |
+      |           |
+(0,1) +-----------+ (1,1)
+
+```
+
+```rust
+fn vertex(self) -> vec4 {
+    // Transform UV coordinates
+    self.uv = self.geom_pos * self.tex_scale + self.tex_offset;
+
+    // Regular vertex transformation
+    let clip_pos = self.geom_pos * self.rect_size + self.rect_pos;
+    return self.camera_projection * vec4(clip_pos, 0.0, 1.0);
+}
+
+fn pixel(self) -> vec4 {
+    // Use transformed UV for sampling
+    return sample2d(self.tex, self.uv);
+}
+```
+
+## Special Effects
+
+### Gaussian Blur
+
+Here's an implementation of a simple Gaussian blur:
+
+```rust
+fn blur(self) -> vec4 {
+    let blur_radius = 2.0; // Blur radius
+    let mut color = vec4(0.0);
+    let mut total_weight = 0.0;
+
+    // Sample in a 5x5 grid around current pixel
+    for i in -2..3 {
+        for j in -2..3 {
+            let offset = vec2(float(i), float(j)) * blur_radius;
+            // Calculate Gaussian weight
+            let weight = exp(-(offset.x * offset.x + offset.y * offset.y));
+
+            color += sample2d(self.tex, self.pos + offset) * weight;
+            total_weight += weight;
+        }
+    }
+
+    return color / total_weight; // Normalize result
+}
+```
+### Glow Effect
+
+```rust
+fn glow(self) -> vec4 {
+    let base_color = sample2d(self.tex, self.pos); // Original color
+    let blur_color = self.blur(); // Blurred color
+
+    // Overlay blurred version to create glow effect
+    return base_color + blur_color * self.glow_strength;
+}
+```
+### Shadow Effect
+
+```rust
+// Using Makepad's built-in GaussShadow to implement shadow effect
+fn draw_shadow(self) -> vec4 {
+    let shadow_color = vec4(0.0, 0.0, 0.0, 0.5);
+    let shadow_offset = vec2(5.0, 5.0);
+
+    // Calculate shadow area
+    let shadow = GaussShadow::box_shadow(
+        self.rect_pos + shadow_offset,
+        self.rect_size,
+        self.pos,
+        10.0 // Shadow blur radius
+    );
+
+    return shadow_color * shadow;
+}
+```

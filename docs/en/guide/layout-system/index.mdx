@@ -1,0 +1,132 @@
+# Basic Concepts
+
+`Layout` and `Walk` are the two most fundamental concepts in Makepad's layout system, working together to determine how components are positioned and sized.
+
+- **Walk**: Defines how a component "walks" within its parent container, determining its own size and position
+- **Layout**: Defines how a component "arranges" its child components when acting as a container
+
+Let's understand this through an analogy:
+
+- Walk is like a person deciding how much space they need and where to stand in a room
+- Layout is like that person, as a room host, deciding how to arrange seating for their guests
+
+The term `Walk` is used because `Turtle Draw` is the core mechanism of Makepad's layout system, inspired by classic Turtle Graphics. 
+
+This layout approach allows us to determine component position and size by having a "turtle" walk across the canvas.
+
+## Detailed Comparison
+
+### Walk Properties
+
+```rust
+walk: {
+    width: Fill,      // Width behavior in parent container
+    height: Fixed(50), // Height behavior in parent container
+    margin: {         // Spacing from other components
+        left: 10,
+        right: 10,
+        top: 5,
+        bottom: 5
+    }
+}
+```
+Key characteristics of `Walk`:
+
+1. Externally oriented - Determines how the component positions itself within its parent
+2. Passive calculation - Size is determined jointly by parent container and own properties
+3. Margin control - Maintains spacing from other components through margins
+
+### Layout Properties
+
+```rust
+layout: {
+    flow: Down,       // Child component arrangement direction
+    spacing: 10,      // Spacing between child components
+    padding: {        // Internal spacing
+        left: 10,
+        right: 10,
+        top: 5,
+        bottom: 5
+    },
+    align: {          // Child component alignment
+        x: 0.5,       // Horizontal center
+        y: 0.0        // Top alignment
+    }
+}
+```
+
+Key characteristics of `Layout`:
+
+1. Internally oriented - Determines how to manage child components
+2. Active layout - Directly controls child component arrangement
+3. Internal space - Controls content area through padding
+
+## Collaborative Working Mechanism
+
+Let's examine how they work together through an example:
+
+```rust
+Container = <View> {
+    // Determines container's behavior in parent
+    walk: {
+        width: Fill,        // Fill parent container width
+        height: Fit,        // Height adapts to content
+        margin: 10         // 10px margin on all sides
+    },
+
+    // Determines how to arrange child components
+    layout: {
+        flow: Down,        // Vertical arrangement of children
+        spacing: 5,        // 5px spacing between children
+        padding: 15,       // 15px internal padding
+        align: {x: 0.5}    // Horizontally center children
+    },
+
+    // Child components
+    <Button> {
+        walk: {
+            width: Fixed(100),  // Fixed 100px width
+            height: Fixed(40)   // Fixed 40px height
+        }
+    }
+
+    <Button> {
+        walk: {
+            width: Fixed(100),
+            height: Fixed(40)
+        }
+    }
+}
+```
+
+Layout calculation process:
+
+1. Container's Walk determines its own Fill width and Fit height within parent
+2. Container's Layout decides children will be vertically arranged and centered
+3. Each Button's Walk determines its own fixed 100x40 size
+4. Finally, Container's height is calculated as:
+    - padding.top (15px)
+    - Button1 height (40px)
+    - spacing (5px)
+    - Button2 height (40px)
+    - padding.bottom (15px)
+    - Total: 115px
+
+Diagram illustrating layout calculation process
+
+```plaintext
+┌─── Container(Fill × Fit) ───┐
+│    ┌── padding: 15px ──┐    │
+│    │   ┌─────────┐     │    │
+│    │   │ Button1 │     │    │
+│    │   └─────────┘     │    │
+│    │      5px          │    │
+│    │   ┌─────────┐     │    │
+│    │   │ Button2 │     │    │
+│    │   └─────────┘     │    │
+│    └───────────────────┘    │
+└─────────────────────────────┘
+    ↑     ↑          ↑      ↑
+ margin  align       flow   margin
+
+```

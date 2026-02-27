@@ -1,0 +1,237 @@
+# 属性继承
+
+继承的组件实例可以:
+
+1. 覆盖父组件的属性
+2. 添加新的属性
+3. 扩展新的子组件实例
+
+
+```rust
+// 基础卡片组件
+Card = {{MyView}} {
+    // 基础属性
+    background_color: #fff,
+    corner_radius: 4.0,
+    shadow_color: #0007,
+
+    // 基础布局
+    flow: Down,
+    spacing: 10
+}
+
+// 产品卡片扩展
+ProductCard = <Card> {
+    // 1. 覆盖父组件属性
+    background_color: #f5f5f5,  // 覆盖背景色
+    corner_radius: 8.0,         // 覆盖圆角
+
+    // 2. 添加新的属性
+    width: 200,
+    height: 300,
+    border_width: 1.0,         // 新增边框
+
+    // 3. 添加子组件
+    image_container = <View> {
+        height: 160
+    }
+
+    title = <Label> {
+        text_wrap: Word,
+        color: #333
+    }
+
+    price = <Label> {
+        color: #f00,
+        font_size: 18
+    }
+
+    buy_button = <Button> {
+        width: Fill,
+        label: "Buy Now"
+    }
+}
+
+// 可以进一步继承和扩展
+FeaturedProductCard = <ProductCard> {
+    // 覆盖属性
+    height: 350,
+    background_color: #fff0f0,
+
+    // 添加新组件
+    badge = <Label> {
+        text: "Featured",
+        background_color: #f00,
+        color: #fff
+    }
+}
+```
+在 Live DSL 里 ProductCard = \<Card\> 这种方法一般是代表「引用」一个组件。
+
+Live 继承系统的特点:
+
+## 继承方式
+
+### 1. 属性继承
+
+```rust
+ParentView = {{View}} {
+    color: #f00,
+    spacing: 10
+}
+
+ChildView = <ParentView> {
+    // 继承 color 和 spacing
+    // 覆盖 color
+    color: #00f,
+    // 添加新属性
+    margin: 20
+}
+```
+
+### 2. 布局继承
+
+```rust
+CardBase = {{View}} {
+    flow: Down,
+    spacing: 10,
+
+    header = <View> {
+        height: 50
+    }
+}
+
+CustomCard = <CardBase> {
+    // 继承布局属性
+    // 修改子组件
+    header = <View> {
+        height: 60,
+        background_color: #f00
+    }
+}
+```
+
+### 3. 动画继承
+
+```rust
+ButtonBase = {{Button}} {
+    animator: {
+        hover = {
+            default: off
+            on = {
+                apply: {color: #f00}
+            }
+        }
+    }
+}
+
+CustomButton = <ButtonBase> {
+    // 继承动画
+    animator: {
+        // 添加新的动画状态
+        pressed = {
+            default: off
+            on = {
+                apply: {scale: 0.9}
+            }
+        }
+    }
+}
+```
+
+### 4. 事件处理继承
+
+```rust
+ClickableView = {{View}} {
+    cursor: Pointer,
+    grab_key_focus: true
+}
+
+InteractiveCard = <ClickableView> {
+    // 继承交互行为
+    // 添加视觉反馈
+    animator: {
+        pressed = {
+            default: off
+            on = {
+                apply: {
+                    background_color: #eee
+                }
+            }
+        }
+    }
+}
+```
+## 继承式创建新组件
+
+```rust
+live_design!{
+	// 定义一个通用的按钮样式
+    // 继承自 Button
+    MyButton = {{MyButton}} <Button> {
+        width: 200,
+        height: 50,
+        margin: {left: 20, right: 20},
+
+        text: "My Button",
+        draw_text: {
+            color: #ffffff
+        },
+    }
+}
+
+#[derive(Live,Widget)]
+pub struct MyButton {
+    // 继承 Button 的所有功能
+    #[deref]
+    button: Button,
+    #[rust]
+    initialized: bool,
+}
+```
+注意这种写法： MyButton = \{\{MyButton\}\} \<Button\> ，是基于已有 Button Widget  进行继承性创建自己的 MyButton 组件。
+
+这种方式适合需要在扩展现有组件时使用。
+
+## 继承的建议
+
+1. 保持继承层次浅。避免过深的继承链，让组件关系容易理解。
+2. 明确命名约定。基础组件使用 `Base/Common` 前缀，变体使用功能相关的名称。
+3. 适度使用继承。不是所有组件都需要继承，有时直接创建更合适。
+
+## Rust 结构体的继承
+
+Rust 结构体中的 #[deref] 属性宏：
+
+```rust
+struct DrawWave {
+    #[deref] draw_super: DrawQuad,  // 继承 DrawQuad 的字段和方法
+    #[live] gain: f32,
+    #[live] vu_left: f32,
+}
+```
+这是一个编译期的 Rust trait 实现机制：
+
+- 通过 `makepad_derive_widget` 宏生成对 `DrawQuad` 的 `Deref/DerefMut` trait 实现
+- 允许 `DrawWave` 直接访问 `DrawQuad` 的字段和方法
+- 是 Rust 语言层面的“委托/继承”模式（用 Deref 模拟继承是个反模式，但用在 Makepad 框架中正好）
+
+两者的配合使用：
+
+```rust
+// Rust 层的基础组件实现
+struct Button {
+    #[deref] draw_super: DrawQuad, // 继承绘制能力
+    #[live] color: Vec4
+}
+
+// Live DSL 层的组件定制
+DefaultButton = <Button> {  // 引用并覆盖属性
+    color: #f00
+}
+```
+
+`#[deref]` 与 Live DSL 中引用组件实例的关键区别：
+
+1. `#[deref]` 是 Rust 编译期的类型系统特性，用于实现组件的基础功能继承，并且可以委托调用相关的方法。
+2. Live DSL 中引用组件主要是用于创建组件结构。

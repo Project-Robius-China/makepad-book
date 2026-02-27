@@ -1,0 +1,9 @@
+[
+    "app-examples",
+    {
+        "type": "dir",
+        "name": "image-viewer-app",
+        "label": "Image Viewer App",
+        "collapsed": true
+    }
+]

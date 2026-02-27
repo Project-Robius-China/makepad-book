@@ -1,0 +1,658 @@
+# Basic
+
+Typically, an application consists of multiple components, including various windows, buttons, input fields, labels, and other widgets, or subcomponents composed of these widgets.
+
+A Component, broadly speaking, is a modular unit that encapsulates specific functionality, typically containing both logic and view definitions.
+
+Components can be composed of multiple Widgets or serve as subcomponents of other components. They usually have independent lifecycles.
+
+Components have the following characteristics:
+
+- **Modularity**: Components are modular units for building user interfaces, making them easy to reuse and maintain.
+- **Encapsulation**: Components encapsulate their own logic and view, reducing coupling with other components.
+- **Composability**: Components can nest other components to build complex interfaces.
+
+`Makepad Widget`, as part of the Makepad framework, includes preset basic UI widgets through the `makepad-widgets` library, such as buttons, labels, and input fields.
+
+These widgets aim to simplify UI construction and management, enabling developers to quickly create complex UI components. Therefore, we need to develop a deep understanding of Makepad Widget.
+
+:::info Differences Between Widgets and Components
+
+**Widget:**
+
+- Basic UI building blocks
+- Direct handling of events and drawing
+- Focus on fundamental UI capabilities
+
+**Component:**
+
+- Compositions of Widgets
+- Higher-level abstractions
+- Focus on business logic
+- Combine existing Widgets
+- Greater reusability
+
+:::
+
+## Components with Declarative UI
+
+Let's begin understanding these built-in widgets through a custom component example. This example comes from the simple example in Makepad, though we'll modify it slightly for this chapter. 
+
+The final effect is shown in the video:
+
+<iframe style={{width: "100%", height: 500}} src="//player.bilibili.com/player.html?isOutside=true&aid=1706295249&bvid=BV1QT421k7ej&cid=1623232698&p=1"></iframe>
+
+1. The window has three widget: `Button`/`Label`/`TextInput`, and each button click increments the number in the input field.
+2. The window background is colorful and changes with mouse movement.
+
+
+First, use cargo new simple to create a crate.
+
+```bash
+cargo new simple
+```
+
+ Add the `makepad-widgets` library dependency in `Cargo.toml`
+
+```toml
+[dependencies]
+# use dev branch，because it is the active development branch
+makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
+```
+
+Then create `lib.rs` and `app.rs` files under src.
+
+Your directory structure should look like this:
+
+```plaintext
+simple/
+├── Cargo.lock
+├── Cargo.toml
+├── src
+│   ├── app.rs
+│   ├── lib.rs
+│   └── main.rs
+
+```
+
+Add the following code to `lib.rs`:
+
+```rust
+pub mod app;
+```
+
+Then let's complete our code in the `app.rs` module. A basic App is a component - how should we define it?
+
+Let's start by defining the overall component structure:
+
+```rust
+
+use makepad_widgets::*; // Import Makepad Widgets package
+
+// Define live_design macro for declaring UI components and layout
+live_design! {
+	App = {{App}} {
+        // Define the root node of the UI tree
+        ui: <Root>{
+            // TODO
+        }
+	}
+}
+
+// Define application entry point
+app_main!(App);
+
+// Define App struct containing UI and counter
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust]
+    counter: usize, // Counter
+}
+
+// Implement LiveRegister trait for registering live design
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        // Register Makepad Widgets' live design
+        makepad_widgets::live_design(cx);
+    }
+}
+
+// Implement AppMain trait for handling events
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // Match and handle events
+        self.match_event(cx, event);
+        // Handle UI events
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+
+```
+
+Let's explain the code structure:
+
+1. `live_design!`,The live_design! macro is used to declare UI components and layout. It's part of the Live system we discussed earlier, implementing Live DSL using Rust macros to enable runtime UI modifications.
+2. `app_main!(App)`defines the application entry point. Since Makepad needs to support cross-platform applications (including Web/iOS/Android/MacOS/Windows/Linux), the `app_main!` macro internally includes entry point code for various platforms, hence using a macro rather than a simple `main` function.
+3. The Rust struct `App` uses the `derive(Live, LiveHook)` derive macro, automatically implementing two Live system-related traits for `App`: `Live` and `LiveHook`.
+    - The `ui` field of type `WidgetRef` can be thought of as `dyn Widget`, representing UI controls that implement the `Widget` trait. These controls can be updated at runtime, marked with the #[live] attribute, which automatically implements certain derive macros, like creating `LiveId` for the field and calling `LiveHook` methods.
+    - The `counter` field belongs to business logic, used for counting, so it's marked with the `#[rust]` attribute, telling the Live system it belongs to Rust's domain rather than UI controls and doesn't participate in runtime updates.
+    - The `Live` and `LiveHook` traits are related to Makepad controls' Live lifecycle, which we'll discuss in detail later.
+4. The `LiveRegister` trait is used to register `App` with the Live system.
+5. The `AppMain` trait defines the `handle_event` method for passing various events to the UI tree, including mouse, timer, or scroll events.
+    - This trait object is actually called in `app_main!`, making it part of the program entry point.
+    - Internally, `ui`'s `handle_event` takes parameters `cx`/`event` for context information and events, while `Scope` is used for component state sharing, with `Scope::empty()` currently representing no shared state.
+
+Makepad is a declarative UI framework, meaning you only need to declare the desired UI style, and the framework will automatically update UI changes.
+
+makepad makes it easier to build and manage UI by declaring UI styles inside `live_design!` macros using the `Live DSL` language in a declarative way.
+
+```rust
+live_design! {
+    // Import base components and desktop theme
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    // Define App component
+    App = {{App}} {
+        // Define the UI tree root node
+        ui: <Root>{
+            // Define main window
+            main_window = <Window>{
+                // Show background
+                show_bg: true
+                width: Fill,
+                height: Fill
+
+
+                // Define custom background drawing
+                draw_bg: {
+                    fn pixel(self) -> vec4 {
+                         // Get geometric position
+                        let st = vec2(
+                            self.geom_pos.x,
+                            self.geom_pos.y
+                        );
+
+                         // Calculate color based on x and y position and time
+                        let color = vec3(st.x, st.y, abs(sin(self.time)));
+                        return vec4(color, 1.0);
+                    }
+								}
+                // Define window body
+                body = <ScrollXYView>{
+                    // Vertical layout direction
+                    flow: Down,
+                    // 10-unit spacing between children
+                    spacing:10,
+                    // Alignment
+                    align: {
+                        x: 0.5,
+                        y: 0.5
+                    },
+                    // Button component
+                    button1 = <Button> {
+                        text: "Hello world"
+                        draw_text:{color:#f00}  // Red text color
+                    }
+
+
+                    // Text input component
+                    label1 = <Label> {
+                        draw_text: {
+                            color: #f // White text color
+                        },
+                        text: "Click to count "
+                    }
+
+                    // Text input component
+                    input1 = <TextInput> {
+                        width: 100, height: 30
+                        text: "Counter: 0 "
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### Basic Components and Theme
+
+```rust
+use link::theme::*;
+use link::widgets::*;
+```
+
+These two `use` statements are used to import base components and the default theme. Note that the `use` keyword is specific to Live DSL, typically used to import Live scripts defined by `live_design!` in other modules.
+
+### Defining the App Component
+
+```rust
+// Define App struct containing UI and counter
+#[derive(Live, LiveHook)]
+pub struct App {
+    #[live]
+    ui: WidgetRef, // UI component reference
+    #[rust]
+    counter: usize, // Counter
+}
+
+live_design! {
+    App = {{App}} {
+            // Define the UI tree root node
+        ui: <Root>{
+            ...
+        }
+    }
+}
+```
+The `App` component is defined in `live_design!` using the `App = {{App}}` syntax. This creates an `App` component instance, where the `App` inside `{{App}}` corresponds to the Rust-defined `App` struct.
+
+The `App` struct has two fields: `ui` and `counter`. The `ui` field represents UI components, so it's annotated with the `#[live]` attribute, while `counter` is a non-UI field, so it's annotated with `#[rust]`.
+
+In the `live_design!` DSL macro, `ui: <Root> { ... }` indicates that the UI component uses a `Root` root node.
+
+### Root Component
+
+The Root component plays a crucial role in Makepad, primarily responsible for managing and coordinating multiple child components.
+```rust
+live_design!{
+    RootBase = {{Root}} {}
+}
+
+#[derive(Live, LiveRegisterWidget, WidgetRef)]
+pub struct Root {
+    // Track current drawing state
+    #[rust] draw_state: DrawStateWrap<DrawState>,
+    // This is a ComponentMap<LiveId, WidgetRef> for storing and managing multiple windows
+    // Each window is a Widget, identified by LiveId
+    #[rust] windows: ComponentMap<LiveId, WidgetRef>,
+}
+...
+```
+
+This component manages multiple `windows` through `LiveId` and `WidgetRef`, and can track the current drawing state.
+
+
+### Rendering Mechanism
+
+Makepad Widget adopts a hybrid approach combining immediate mode and retained mode rendering, providing high flexibility and performance optimization.
+
+- Retained mode preserves the state and structure of UI elements, updating only when necessary, suitable for static or infrequently changing UI elements.
+- Immediate mode recalculates and draws UI elements every frame, providing greater flexibility and ease of implementing dynamic UI, suitable for frequently changing UI elements.
+
+Makepad adopts a hybrid mode, maintaining the rendering UI tree's structural state, balancing performance and flexibility. It traverses all windows and components that need updating, recalculating and drawing immediate mode parts while only updating changed parts for retained mode components.
+
+The Root component is an example of this hybrid approach between retained and immediate modes.
+
+### Window Component
+
+```rust
+// Define App component
+App = {{App}} {
+    // Define the UI tree root node
+    ui: <Root>{
+        // Define main window
+        main_window = <Window>{
+            // Show background
+            show_bg: true
+            width: Fill,
+            height: Fill
+
+            // Define custom background drawing
+            draw_bg: {
+                fn pixel(self) -> vec4 {
+                    ...
+                }
+            }
+            // Define window body
+            body = <ScrollXYView>{
+                // Vertical layout direction
+                flow: Down,
+                // 10-unit spacing between children
+                spacing:10,
+                // Alignment
+                align: {
+                    x: 0.5,
+                    y: 0.5
+                },
+                // Button component
+                button1 = <Button> {
+                    text: "Hello world"
+                    draw_text:{color:#f00} // Red text color
+                }
+
+                // Label component
+                label1 = <Label> {
+                    draw_text: {
+                        color: #f // White text color
+                    },
+                    text: "Click to count "
+                }
+
+                // Text input component
+                input1 = <TextInput> {
+                    width: 100, height: 30
+                    text: "Counter: 0 "
+                }
+            }
+        }
+    }
+}
+```
+Inside the `Root` component, we define a `main_window` window component as a `<Window>` instance. Similarly, this `<Window>` component corresponds to the `Window` Rust struct defined in `widgets/window.rs`.
+
+In the `main_window` instance, we declare some basic properties: `show_bg` / `width` / `height`, and a special property `draw_bg`. This property is special because it starts with the `draw_` prefix and can be followed by a code block to specify shader scripts - here it specifies a `fn pixel(self) -> vec4` function to render the background color.
+
+Additionally, the `main_window` instance defines a `body` component instance, which corresponds to a scroll view component `<ScrollXYView>`. Similarly, this `body` instance defines some basic properties of the component and its contained component instances:
+
+- `<Button>`, button instance
+- `<Label>`, label instance
+- `<TextInput>`, text input instance
+
+With this, our Simple UI declaration is complete. Next, we'll add specific business logic to this UI.
+
+
+### Adding Business Logic
+
+Our Simple UI's business logic is: when clicking the button, the value in the text input box will change to display the incremented count, adding one with each button click.
+
+```rust
+// Implement MatchEvent trait for handling events
+impl MatchEvent for App {
+    fn handle_actions(&mut self, cx: &mut Cx, actions: &Actions) {
+        // Check if button was clicked
+        // We can directly use the button1 instance through `id!()` to get the clicked Button
+        // `clicked` is a method of the Button component
+        if self.ui.button(id!(button1)).clicked(&actions) {
+            // Increment counter
+            log!("BUTTON jk {}", self.counter);
+            self.counter += 1;
+
+            // Update label text
+            // Similarly, get the input1 text input instance through `id!()`
+            let input = self.ui.text_input(id!(input1));
+            // Use the text input component's built-in `set_text`
+            // to update the text input content with the new counter value and trigger immediate redraw
+            input.set_text(cx, &format!("Counter: {}", self.counter));
+        }
+    }
+}
+```
+
+The `id!()` macro obtains the `LiveId` of the passed component instance. In Makepad, the Live System, draw library, and Widget library are deeply coupled. Component rendering order depends on `LiveId`. We'll delve deeper into Live System-related content in subsequent chapters.
+
+We implement the `MatchEvent` trait for `App` to implement our business logic. This trait is defined in `makepad-draw/src/match_event.rs` and serves as the core interface for handling various events in the Makepad framework.
+
+The trait defines multiple event handling methods, such as `handle_startup`, `handle_shutdown`, `handle_draw`, etc. This abstracts various platform-level events into a unified interface, simplifying cross-platform development.
+
+The `handle_actions` method is used to handle multiple actions, with the default implementation iterating through all actions and calling `handle_action`.
+
+The `MatchEvent` trait also defines a default implementation of `match_event`, which calls the `handle_actions` method.
+
+In our previously defined App entry event handling method `handle_event`, we called this `match_event` method:
+
+```rust
+// Implement AppMain trait for handling events
+impl AppMain for App {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+        // Match and handle events
+        self.match_event(cx, event);
+        // Handle UI events, in this case `<Root>`
+        // This calls the handle_event method defined when implementing Widget trait
+        self.ui.handle_event(cx, event, &mut Scope::empty());
+    }
+}
+```
+
+This reflects Makepad's architectural decision to separate application logic and UI component concerns. Application-level event handling (`match event`) is typically higher-level and abstract. UI event handling focuses on specific component interactions.
+
+## Action
+
+Action is an important concept for Makepad, used to represent user interface interactions or state changes.
+
+The essence of `Action` is defined in `platform/src/action.rs`:
+
+```rust
+pub trait ActionTrait: 'static  {
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn ref_cast_type_id(&self) -> TypeId where Self: 'static {TypeId::of::<Self>()}
+}
+
+impl<T: 'static + Debug + ?Sized > ActionTrait for T {
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.fmt(f)
+    }
+}
+
+generate_any_trait_api!(ActionTrait);
+
+impl Debug for dyn ActionTrait{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.debug_fmt(f)
+    }
+}
+
+pub type Action = Box<dyn ActionTrait>;
+pub type ActionsBuf = Vec<Action>;
+pub type Actions = [Action];
+
+pub trait ActionCast<T> {
+    fn cast(&self) -> T;
+}
+
+impl Cx{
+    pub fn action(&mut self, action: impl ActionTrait){
+        self.new_actions.push(Box::new(action));
+    }
+
+    pub fn extend_actions(&mut self, actions: ActionsBuf){
+        self.new_actions.extend(actions);
+    }
+
+    pub fn map_actions<F, G, R>(&mut self, f: F, g:G) -> R where
+    F: FnOnce(&mut Cx) -> R,
+    G: FnOnce(&mut Cx, ActionsBuf)->ActionsBuf,
+    {
+        ...
+    }
+
+    pub fn capture_actions<F>(&mut self, f: F) -> ActionsBuf where
+    F: FnOnce(&mut Cx),
+    {
+        ...
+    }
+}
+```
+
+This code defines the core structure and behavior of Actions in the Makepad platform:
+
+- `ActionTrait`: Can be viewed as an extension or custom version of the `Any` trait, automatically implemented for all `'static` types that implement the `Debug` trait. The `ref_cast_type_id` method provides functionality similar to `Any::type_id`.
+- `Action`: Actually a trait object of `ActionTrait`. `Actions` is an array of these trait objects, a dynamically sized type similar to `[T]`, so it's used as `&Actions`.
+- `Cx`: A cross-platform context struct that abstracts various methods for operating on `actions`, hiding different platform-level implementations.
+
+The `widgets/src/widget.rs` defines the core `Widget` trait interface to manage methods that must be implemented for Widgets. `WidgetRef` is an encapsulation of the `dyn Widget` trait object.
+
+Additionally, there's the WidgetActionTrait-related trait, specifically designed for the Widget system as a specialization of `ActionTrait`. This allows Widgets to dynamically select and execute different WidgetActions at runtime.
+
+```rust
+pub trait WidgetActionTrait: 'static {
+    fn ref_cast_type_id(&self) -> TypeId;
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn box_clone(&self) -> Box<dyn WidgetActionTrait>;
+}
+
+impl<T: 'static + ? Sized + Clone + Debug> WidgetActionTrait for T {
+    fn ref_cast_type_id(&self) -> TypeId {
+        TypeId::of::<T>()
+    }
+
+    fn box_clone(&self) -> Box<dyn WidgetActionTrait> {
+        Box::new((*self).clone())
+    }
+    fn debug_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.fmt(f)
+    }
+}
+
+impl Debug for dyn WidgetActionTrait{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result{
+        self.debug_fmt(f)
+    }
+}
+
+generate_any_trait_api!(WidgetActionTrait);
+
+impl Clone for Box<dyn WidgetActionTrait> {
+    fn clone(&self) -> Box<dyn WidgetActionTrait> {
+        self.as_ref().box_clone()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WidgetAction {
+    action: Box<dyn WidgetActionTrait>,
+    pub widget_uid: WidgetUid,
+    pub path: HeapLiveIdPath,
+    pub group: Option<WidgetActionGroup>
+}
+
+
+impl WidgetActionsApi for Actions{
+    fn find_widget_action(&self, widget_uid: WidgetUid) -> Option<&WidgetAction>{
+        for action in self{
+            // Here action will be converted to WidgetAction
+            if let Some(action) = action.downcast_ref::<WidgetAction>(){
+                if action.widget_uid == widget_uid{
+                    return Some(action)
+                }
+            }
+        }
+        None
+    }
+}
+
+```
+
+Because `WidgetAction` also implements `ActionTrait` by default, the action can be converted to `WidgetAction` here.
+
+### Button Widget Implementation Mechanism
+
+Let's examine how Makepad's built-in Button Widget is implemented:
+
+```rust
+live_design! {
+    ButtonBase = {{Button}} {}
+}
+
+#[derive(Clone, Debug, DefaultNone)]
+pub enum ButtonAction {
+    None,
+    /// The button was pressed (a "down" event).
+    Pressed(KeyModifiers),
+    /// The button was clicked (an "up" event).
+    Clicked(KeyModifiers),
+    /// The button was released (an "up" event), but should not be considered clicked
+    /// because the mouse/finger was not over the button area when released.
+    Released(KeyModifiers),
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct Button {
+    ......
+    // Various property fields defined
+}
+
+impl Widget for Button {
+     fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+         let uid = self.widget_uid();
+         ...
+         if self.enabled && self.visible {
+            match event.hits(cx, self.draw_bg.area()) {
+                Hit::FingerDown(fe) => {
+                    if self.grab_key_focus {
+                        cx.set_key_focus(self.draw_bg.area());
+                    }
+                    cx.widget_action(uid, &scope.path, ButtonAction::Pressed(fe.modifiers));
+                    self.animator_play(cx, id!(hover.pressed));
+                }
+                ...
+              }
+              ...
+          }
+     }
+
+     fn draw_walk(&mut self, cx: &mut Cx2d, _scope: &mut Scope, walk: Walk) -> DrawStep {
+        if !self.visible {
+            return DrawStep::done();
+        }
+
+        self.draw_bg.begin(cx, walk, self.layout);
+        self.draw_icon.draw_walk(cx, self.icon_walk);
+        self.draw_text
+            .draw_walk(cx, self.label_walk, Align::default(), self.text.as_ref());
+        self.draw_bg.end(cx);
+        DrawStep::done()
+    }
+}
+
+impl Button {
+    pub fn clicked_modifiers(&self, actions: &Actions) -> Option<KeyModifiers> {
+        if let ButtonAction::Clicked(m) = actions.find_widget_action(self.widget_uid()).cast() {
+            Some(m)
+        } else {
+            None
+        }
+    }
+
+    ...
+}
+```
+
+Here we're only showing the Button Widget's code structure, not the complete code.
+
+To implement a Widget, one must implement the `Widget` trait, including two required methods: `handle_event` and `draw_walk`.
+
+The `handle_event` method matches specific events, such as `Hit::FingerDown`. When a match is successful, it generates a corresponding WidgetAction through `cx.widget_action`. This includes actions like `ButtonAction::Pressed`.
+
+The `draw_walk` method is Makepad framework's core method for drawing Widgets. It combines layout calculation and actual drawing operations.
+
+### Action Flow Summary
+
+When a button is clicked, here's the actual flow:
+
+1. User Button Click:
+    - Operating system captures the click event
+2. Event Propagation to Application:
+    - Operating system passes the event to the Makepad application
+3. Event Enters Main Loop (when application starts, `app_main!` initiates a main loop):
+    - In the current event loop, the click event is passed to `AppMain::handle_event`
+4. UI Tree Event Handling:
+    - Event is passed to the UI tree through `self.ui.handle_event(cx, event, &mut Scope::empty())`
+5. Button Event Handling:
+    - Event reaches the Button component's `handle_event` method
+6. Action Generation:
+    - Button recognizes the click, immediately generates `ButtonAction::Pressed` or `ButtonAction::Clicked`
+    - Using `cx.widget_action(uid, &scope.path, ButtonAction::Clicked(fe.modifiers))` will create a WidgetAction
+7. Action Collection:
+    - The Action is immediately added to Cx's internal action buffer (`ActionsBuf`)
+8. Event Handling Completion:
+    - Button and other components complete event handling
+9. Current Event Loop Ends:
+    - `handle_event` method execution completes
+10. Action Processing:
+    - In `self.match_event(cx, event)`, the `event` matches `Event::Actions` type
+11. State Update and UI Refresh:
+    - Based on processed Actions, update application state and trigger necessary UI updates
+
+This flow demonstrates how Makepad converts low-level events into high-level abstract Actions and propagates them throughout the application. This design allows:
+
+- Distribution of event handling logic across various Widgets
+- Provision of a unified mechanism for handling user interactions
+- Implementation of complex interaction patterns, such as cross-component communication
+- Maintenance of type safety while allowing dynamic behavior
+
+The elegance of this system lies in its combination of immediate event handling and deferred action processing, providing a balance between flexibility and performance.

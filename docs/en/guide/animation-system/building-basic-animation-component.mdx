@@ -1,0 +1,213 @@
+# Building Basic Animation Component
+
+## Basic Structure Design
+
+Let's first look at how to build a basic animation component:
+
+```rust
+// 1. First declare the component structure
+#[derive(Live, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,          // Base view component
+    #[animator] animator: Animator,  // Animation controller
+
+    // Animation parameters
+    #[live(0.65)] animation_duration: f64,
+    #[live(10.0)] swing_amplitude: f64,
+    #[live(3.0)] swing_base: f64,
+
+    // Runtime state
+    #[rust] next_frame: Option<NextFrame>,
+    #[rust] animation_start_time: f64,
+    #[rust] is_animating: bool,
+}
+```
+
+This structure provides the necessary infrastructure for our animation component.
+
+## Animation State Definition
+
+In Makepad, we use the live_design! macro to declare animation states:
+
+```rust
+live_design! {
+    TypingAnimation = {{TypingAnimation}} {
+        // Basic property configuration
+        width: Fit,
+        height: Fit,
+
+        // Animation state definition
+        animator: {
+            // Animation state group
+            circle1 = {
+                default: down,  // Default state
+                down = {       // Down movement state
+                    redraw: true,
+                    from: {all: Forward {duration: 0.325}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: 10.0} }}}
+                }
+                up = {        // Up movement state
+                    redraw: true,
+                    from: {all: Forward {duration: 0.325}}
+                    ease: InOutQuad
+                    apply: {content = { circle1 = { margin: {top: 3.0} }}}
+                }
+            }
+        }
+    }
+}
+```
+
+In Makepad's Live DSL, animator is a special property used to define component animation states and behaviors. Let's dive deep into its syntax and structure.
+
+- Animation state groups serve as namespaces for organizing related animation states. A state group is effectively an animation track (track). When you want to animate different properties of the same object simultaneously, you need to create separate tracks for each animated property.
+
+```rust
+animator: {
+    circle1_position = {  // Position track
+        default: down,
+        down = { /* Control position animation states */ }
+    }
+    circle1_opacity = {   // Opacity track
+        default: visible,
+        hidden = { /* Control opacity animation states */ }
+    }
+}
+```
+
+- Each state contains three main parts:
+    - **from** - Defines animation timing characteristics
+    - **ease** - Defines animation easing function
+    - **apply** - Defines final property values for the state
+
+```rust
+// from
+from: {
+    all: Forward {duration: 0.2}      // Play forward once
+    all: Reverse {                    // Play in reverse once
+        duration: 0.2,
+        end: 1.0
+    }
+    all: Loop {                       // Loop playback
+        duration: 0.2,
+        end: 1.0
+    }
+    all: BounceLoop {                 // Loop back and forth
+        duration: 0.2,
+        end: 1.0
+    }
+    all: Snap                         // Instant switch, no animation
+}
+// ease
+// - `OutQuad`/`OutCubic`: Suitable for natural motion
+// - `InOutQuad`: Suitable for reversible animations
+// - `Linear`: Suitable for continuous animations like rotation
+ease: Linear          // Linear
+ease: InQuad          // Quadratic acceleration
+ease: OutQuad         // Quadratic deceleration
+ease: InOutQuad       // Quadratic ease-in-out
+ease: Bezier {        // Bezier curve
+    cp0: 0.0,
+    cp1: 0.0,
+    cp2: 1.0,
+    cp3: 1.0
+}
+
+// apply
+apply: {
+    opacity: 1.0,
+    scale: 1.2,
+    color: #f00,
+    position: vec2(100.0, 0.0)
+}
+```
+## Implementing Animation Logic
+
+The core of animation lies in state management and frame updates:
+
+```rust
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        match event {
+            Event::NextFrame(ne) => {
+                // Handle animation frame updates
+                if let Some(next_frame) = self.next_frame {
+                    if ne.set.contains(&next_frame) {
+                        self.update_animation(cx, ne.time);
+                        self.next_frame = Some(cx.new_next_frame());
+                    }
+                }
+            }
+            // ... Other event handling
+        }
+    }
+}
+```
+
+> Note: In Makepad, animations should be based on NextFrame, not Timer. This is because Timer relies on underlying OS APIs, which poses cross-platform risks.
+
+Methods to trigger animations in code:
+
+```rust
+// Instant state switch
+self.animator_cut(cx, &[id!(hover), id!(on)]);
+
+// Animate transition to state
+self.animator_play(cx, &[id!(hover), id!(on)]);
+
+// Toggle state based on condition
+self.animator_toggle(
+    cx,
+    is_hovered,                    // Condition
+    Animate::Yes,                  // Whether animation is needed
+    &[id!(hover), id!(on)],       // State when condition is true
+    &[id!(hover), id!(off)]       // State when condition is false
+);
+```
+
+Handling animation events:
+
+```rust
+fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+    // Handle animation system events
+    if self.animator_handle_event(cx, event).must_redraw() {
+        // Animation needs redraw
+        self.redraw(cx);
+    }
+
+    // Check animation state
+    if self.animator_in_state(cx, &[id!(hover), id!(on)]) {
+        // Currently in hover state
+    }
+}
+```
+
+## Animation Control Interface
+
+It's good practice to provide control interfaces for animation components:
+
+```rust
+impl TypingAnimationRef {
+    // Start animation
+    pub fn start(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.start(cx);
+        }
+    }
+
+    // Stop animation
+    pub fn stop(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.stop(cx);
+        }
+    }
+
+    // Configure animation parameters
+    pub fn set_animation_speed(&self, cx: &mut Cx, duration: f64) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.animation_duration = duration;
+        }
+    }
+}
+```

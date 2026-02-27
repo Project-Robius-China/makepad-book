@@ -1,0 +1,150 @@
+---
+date: 2025-04-21
+sidebar: false
+---
+
+# Makepad Weekly Progress Report  #20250421
+
+> Author: AlexZhang
+> 
+> Based on discussions from April 16th to 20th and merged PRs within the week.
+
+This week was a productive one, with the Makepad team making progress on multiple fronts, including platform features, core widget fixes and improvements, performance optimizations, and adjustments to the underlying rendering architecture.
+
+Key advancements include resolving gesture interaction challenges on iOS, fixing a critical bug in Dock state loading, and advancing Android XR support. Concurrently, the team continues performance analysis and optimization (text, font stack) and addresses various widget and platform-related issues. Planning for CI also signals future improvements to the development workflow. Some known minor issues (like PortalList warnings and Html link parsing) have been identified and are awaiting further action.
+
+## Progress Report
+
+### **I. Platform Features and Fixes**
+
+1.  **iOS Long Press Gesture Support (#715):**
+    *   Kevin successfully added long press gesture recognition for iOS.
+    *   A challenge was encountered: iOS's `UIGestureRecognizer` "takes over" the event stream upon recognizing a gesture, preventing the underlying view (Makepad's MTKView) from receiving subsequent touch events (like `FingerUp`) until the gesture fully ends (finger lifted). This made it difficult to trigger Makepad's internal events while the gesture was ongoing (finger held down but long press duration met).
+    *   This was ultimately resolved by setting the `cancelsTouchesInView` property to `false`, allowing the underlying view to continue receiving touch events even after the gesture is recognized.
+
+2.  **Android XR Support Advancement (Rik):**
+    *   Rik made progress on Android XR support, which involves upgrading the rendering backend to OpenGL ES 3.0.
+    *   To meet the demands of XR rendering (especially multi-view rendering), Rik began adding support for Uniform Buffers to the OpenGL backend. This is also expected to improve rendering performance in non-XR scenarios.
+
+3.  **Window Management Improvements (#693):**
+    *   Alan contributed improvements to cross-platform window resizing and positioning functionality.
+
+4.  **Build and Platform Fixes:**
+    *   Fixed a build issue on the Linux X11 platform (#710).
+    *   Fixed an issue on Android where long press event coordinates did not use the DPI factor (#708).
+    *   Added underlying support related to IME (Input Method Editor) (#696).
+
+### **II. Core Widget Fixes and Improvements**
+
+1.  **Dock State Loading Bug Fix (#711):**
+    *   Alan identified and fixed a critical issue: loading previously saved Dock layout state could cause `LiveId` collisions in a new application instance. This happened because the unique `LiveId` counter resets in the new instance, potentially generating IDs that clash with unique IDs saved from the *previous* instance (used for dynamically created Splitters or Tabs), leading to the overwriting of the old layout.
+    *   The solution involves transforming the loaded unique `LiveId`s into new, string-based `LiveId`s during the `load_state` process, thus avoiding collisions. Kevin requested Rik to review this approach.
+
+2.  **PortalList / DrawList Issues:**
+    *   The `smooth_scroll_to_end` function was improved to internally call `smooth_scroll_to` (#691).
+    *   Julian reported a warning about incorrect `DrawListId` index generation when using different templates for the same `item_id` in a `PortalList`. While it doesn't seem to break functionality currently, the team discussed debugging methods (panic, `#[track_caller]`) to trace the source.
+
+3.  **Button State Bug Fix (#718):**
+    *   Kevin fixed a minor bug in the Button widget where the hover state was not correctly handled if the button was disabled while being hovered over, and the mouse then moved out.
+
+4.  **CommandTextInput Improvements:**
+    *   AlexZhang fixed a minor error in the DSL (#709).
+    *   Distinguished between mouse mode and keyboard mode, enhancing the interaction experience (#707).
+
+5.  **Html Widget Link Parsing Issue (Kevin):**
+    *   An issue was discovered where the `<Html>` widget does not correctly parse and render link content (`<a>` tag text) when the link tag is nested within other tags (like `<code>`) that use custom subwidgets. The preliminary assessment points to the `<Html>` widget's handling of subwidget content rather than an issue with the underlying HTML parser.
+
+### **III. Performance and Rendering Backend**
+
+1.  **Text Stack Performance (Rik):**
+    *   Rik mentioned identifying and currently fixing some performance regressions (described as "stupid bugs") in the text stack (TextStack).
+2.  **Font Stack Performance (Eddy):**
+    *   Eddy pointed out a known performance issue in the new font stack when determining if a glyph is already in the atlas (requires creating an intermediate data structure). A fix is planned for this week.
+3.  **OpenGL ES 3.0 and Uniform Buffers (Rik):**
+    *   To support Android XR, the OpenGL backend is being upgraded to ES 3.0, and Uniform Buffer support is being added, which is expected to improve overall rendering performance.
+
+### **IV. Infrastructure and Other**
+
+1.  **CI Planning (Rik):**
+    *   Rik plans to set up basic Continuous Integration (CI) to ensure, at a minimum, that PRs pass `cargo makepad check all` on all platforms.
+2.  **Discussions:**
+    *   The team had brief discussions on event naming ("pointer" vs "finger") and the NIH (Not Invented Here) syndrome.
+    *   The advantage of having source code access (like Android) compared to closed-source platforms (like Apple) for resolving low-level issues was highlighted.
+
+---
+
+## Extended Reading
+
+### **Event Naming Discussion Summary ("pointer" vs "finger")**
+
+Makepad's event system (e.g., the `Hit` enum) uses terms like `FingerDown`, `FingerUp`, `FingerHoverIn` to describe touch and mouse interactions.
+
+**Discussion Point:**
+
+Rik mentioned the potential need to consider non-human users (like AI or "tentacled alien overlords" - humorously put) interacting with the UI in the future. In such scenarios, the term "finger" might become inappropriate. Rik noted that the W3C (World Wide Web Consortium) uses the more generic term "pointer" to encompass various input methods like mouse, touch, and pen, considering it a more robust approach.
+
+**Conclusion (Inferred):**
+
+While no immediate change was decided upon, the discussion indicates the team recognizes the limitations of "finger" and acknowledges the value of "pointer" as a more universal and future-proof term. This might suggest a future migration of Makepad's event system towards "pointer" events to better accommodate diverse input and interaction methods.
+
+### **NIH (Not Invented Here) Syndrome**
+
+NIH syndrome refers to a cultural or organizational phenomenon where **developers or organizations tend to avoid using, trusting, or buying existing products, research, standards, or knowledge from external (third-party) sources, even if they are readily available and potentially superior solutions. Instead, they prefer to redevelop or "reinvent the wheel" themselves.**
+
+**Manifestation in the Discussion:**
+
+Kevin encountered difficulties with iOS gesture recognizers due to the complex and somewhat "overbearing" behavior of Apple's `UIGestureRecognizer` (blocking event propagation to underlying views). He worried they might need to implement a gesture recognizer from scratch to gain the necessary control.
+
+Rik expressed concern about the necessity of implementing low-level features ("the hard cost of NIH") but also emphasized a key advantage of Makepad: if the existing solution (Apple's) doesn't meet their needs, they *can* choose to implement it themselves ("atleast we CAN choose", "cherish the thought that we CAN"). He contrasted this with web development, where developers are often limited by browser APIs and cannot modify underlying behavior ("on web you cant choose").
+
+Kevin acknowledged his own NIH tendencies ("I too suffer from NIH syndrome"), having previously developed his own operating system. However, he felt that a relatively high-level feature like gesture recognition *shouldn't* fall into the category of things needing reinvention, implying Apple should provide better APIs or customization options.
+
+This discussion reflects the common dilemma developers face when dealing with limitations of external platforms or libraries:
+*   **Pros of self-implementation:** Full control, ensuring specific needs are met, avoiding external dependency issues.
+*   **Cons of self-implementation:** Time-consuming, potentially introduces new bugs, misses out on leveraging existing mature solutions.
+
+**Makepad's Stance (Inferred):**
+
+The discussion suggests the Makepad team prefers leveraging platform features when possible but retains the ability to customize or even reimplement low-level components when necessary to ensure the final user experience and framework flexibility. They recognize the cost of NIH but also value the freedom to "choose to build it themselves" as an advantage.
+
+In summary, NIH syndrome describes a "not-invented-here" mentality. The Makepad team's discussion shows an awareness of this pitfall while also valuing the freedom to develop necessary components independently when required.
+
+### **Apple's UIGestureRecognizer Core Mechanism**
+
+Apple's `UIGestureRecognizer` is a powerful framework for identifying various user gestures on touchscreens, such as Tap, Long Press, Pan, Pinch, Rotation, and Swipe.
+
+Its core idea involves:
+
+1.  **Attaching to Views:** One or more gesture recognizers can be attached to a `UIView`.
+2.  **Listening to Touch Events:** Gesture recognizers monitor raw touch events (`UITouch` objects containing start, move, end, cancel info) received by the view they are attached to and its subviews.
+3.  **State Machine:** Each recognizer maintains an internal state machine. It determines if a gesture is possible, has begun, is changing, has succeeded, failed, or been cancelled based on the sequence of touch events. Key states include:
+    *   `Possible`: Initial state.
+    *   `Began`: Gesture has started (e.g., long press held long enough, pan moved far enough).
+    *   `Changed`: Gesture is ongoing and changing (e.g., finger panning or pinching).
+    *   `Ended` / `Recognized`: Gesture completed successfully (e.g., finger lifted after a tap or pan).
+    *   `Cancelled`: Gesture cancelled by the system or another recognizer.
+    *   `Failed`: Touch sequence didn't match the gesture requirements.
+4.  **Triggering Actions:** When the recognizer's state changes (especially on success or during progress), it can trigger pre-defined target-action methods or closures.
+
+**"Taking Over" the Event Stream (Default Behavior)**
+
+The key behavior mentioned in the discussion is that `UIGestureRecognizer` defaults to "taking over" the event stream:
+
+1.  **Touch Event Delivery:** Normally, touch events go first to the gesture recognizer(s) and then potentially to the view itself (via `touchesBegan:`, `touchesMoved:`, `touchesEnded:` methods).
+2.  **Interception on Recognition:** **Once a gesture recognizer successfully identifies a gesture (state becomes `Began` or `Recognized`/`Ended`), by default, it prevents subsequent raw touch events from being delivered to that view and its subviews.** This is what Kevin referred to as "take over the event flow and do not allow the underlying view to receive future events".
+3.  **Purpose:** This design aims to prevent conflicts and provide a clear interaction model. For instance, if a view has both tap and drag gestures, once dragging is recognized, subsequent touch movements shouldn't be interpreted as part of a tap, nor should the view handle the drag itself (as the recognizer is doing so).
+
+**The Role of the `cancelsTouchesInView` Property**
+
+The `cancelsTouchesInView` property, which Kevin later found, is key to resolving this:
+
+*   **`cancelsTouchesInView = true` (Default):** When the gesture is recognized, all ongoing touch events are marked as cancelled (sending `touchesCancelled:` to the view), and subsequent touch events are *not* delivered to the view until the gesture ends. This was the cause of Makepad's underlying view not receiving `FingerUp` events.
+*   **`cancelsTouchesInView = false`:** When the gesture is recognized, touch events **continue to be delivered** to the view. This means the view's `touchesBegan:`, `touchesMoved:`, `touchesEnded:` methods will still be called, even while the gesture recognizer is also processing the touches.
+
+**Why `cancelsTouchesInView = false` is Important for Makepad**
+
+Makepad has its own event handling system that requires the complete sequence of touch events (down, move, up) to drive its internal `Hit` detection and widget event dispatch logic. If the iOS gesture recognizer intercepts `touchesEnded` after recognizing a gesture (like a long press), Makepad wouldn't know when the finger was lifted, couldn't trigger the corresponding `FingerUp` event, and could end up with inconsistent UI states or broken interactions.
+
+By setting `cancelsTouchesInView = false`, Kevin allowed Makepad's underlying view (`MTKView`) to continue receiving raw touch events (including the finger lift event) even after an iOS long press gesture was recognized. This enables Makepad to correctly generate and process its internal `FingerUp` event.
+
+Apple's `UIGestureRecognizer` is a powerful state machine for complex gestures. Its default behavior intercepts raw touch events from the view upon recognition to simplify interaction logic. However, for frameworks like Makepad with their own complete event systems, this default is disruptive. Setting `cancelsTouchesInView = false` allows raw touch events to continue flowing to the underlying view, enabling Makepad to receive and process the full user interaction sequence.

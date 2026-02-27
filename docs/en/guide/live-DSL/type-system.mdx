@@ -1,0 +1,356 @@
+# Type System
+
+Understanding the Live DSL type system helps with writing and debugging Live code effectively.
+
+##  LiveValue Types
+
+```rust
+#[derive(Clone, Debug, PartialEq)]
+pub enum LiveValue {
+    None,
+    // string types
+    Str(&'static str),
+    String(Arc),
+    InlineString(InlineString),
+    Dependency(Arc),
+    Bool(bool),
+    Int64(i64),
+    Uint64(u64),
+    Float32(f32),
+    Float64(f64),
+    Color(u32),
+    Vec2(Vec2),
+    Vec3(Vec3),
+    Vec4(Vec4),
+    Id(LiveId),
+    IdPath(Arc>),
+    ExprBinOp(LiveBinOp),
+    ExprUnOp(LiveUnOp),
+    ExprMember(LiveId),
+    ExprCall {ident: LiveId, args: usize},
+     // enum thing
+    BareEnum (LiveId),
+    // tree items
+    Root{id_resolve:Box>},
+    Array,
+    Expr,// {expand_index: Option},
+    TupleEnum (LiveId),
+    NamedEnum (LiveId),
+    Object,
+    Clone{clone:LiveId, design_info:LiveDesignInfoIndex},
+    Deref{live_type: LiveType, clone:LiveId, design_info:LiveDesignInfoIndex},
+    Class {live_type: LiveType, class_parent: LivePtr, design_info:LiveDesignInfoIndex},
+    Close,
+
+    // shader code and other DSLs
+    DSL {
+        token_start: u32,
+        token_count: u32,
+        expand_index: Option
+    },
+    Import (Box),
+}
+```
+These special variants in LiveValue represent the types supported in Live DSL:
+
+```rust
+Component = {
+    // Basic type usage
+    name: "Component",         // Str
+    enabled: true,            // Bool
+    width: 100,              // Int64
+    height: 50.5,            // Float64
+    color: #ff0000,          // Color
+    position: vec2(10, 20),  // Vec2
+
+    // Resource dependencies
+    icon: dep("crate://self/icons/home.svg"),  // Dependency
+
+    // Expressions
+    scale: (base_size * 2),   // ExprBinOp
+    visible: (!hidden),       // ExprUnOp
+
+    // Enums
+    status: Active,           // BareEnum
+    point: Point(10, 20),     // TupleEnum
+    user: User {              // NamedEnum
+        name: "John",
+        age: 30
+    },
+}
+```
+
+Here are explanations of some key types:
+
+### 1. String-related Types
+    - `Str(&'static str)`: Static string reference, determined at compile time, stored in program binary
+    - `String(Arc<str>)`: Dynamic string, wrapped in Arc smart pointer for shared ownership
+    - `InlineString`: Short string optimization, stored inline without heap allocation
+
+The compiler automatically selects the most appropriate string representation based on context and usage scenario.
+
+```rust
+// After string decoding, choose appropriate LiveValue type based on length
+if let Some(v) = decode_str(data, &mut o)? {
+    let value = if let Some(inline_str) = InlineString::from_str(v) {
+        // Use InlineString if string is short enough
+        LiveValue::InlineString(inline_str)
+    } else {
+        // Otherwise use Arc<String>
+        LiveValue::String(Arc::new(v.to_string()))
+    };
+    self.push(LiveNode {id, origin, value});
+}
+
+// Example
+struct Button {
+    id: InlineString,  // Fixed size on stack
+    text: Arc<String>, // Shared heap memory
+    class: &'static str, // Zero cost
+}
+```
+### Structure Organization Related
+
+- `Root`: Represents the root node of Live document, includes id_resolve for identifier resolution
+- `Class`: Used for component class definition, includes:
+    - live_type: Component type information
+    - class_parent: Reference to parent class
+    - design_info: Additional design-time information
+- `Close`: Indicates the end of a block, used with Object/Array
+- `Object`: Indicates the start of an object
+- `Array`: Indicates the start of an array
+
+### DSL Related
+
+- `DSL`: Used for embedding Domain Specific Languages, such as shader code
+    - token_start/count: Marks position of DSL code in token stream
+    - expand_index: Related to macro expansion
+
+### 1. Module System
+
+- `use`: Used for importing other modules, contains import information
+- `pub`: Used for exporting public components, contains export information
+
+### 1. Special Value Handling
+
+- `Clone`: Copies an existing component, includes:
+    - clone: ID of component being copied
+    - design_info: Design-time information
+- `Deref`: Dereferences a component reference, includes:
+    - live_type: Component type
+    - clone: Component ID
+    - design_info: Design-time information
+
+```rust
+llive_design!{
+    // Import other modules
+    import makepad_widgets::button::Button; // Generates Import variant
+
+    // LiveValue::Class creates a component
+    App = {{App}} {
+        ui: <Root> {
+            flow: Right,
+            // Object variant starts
+            buttons: {
+                save_button: <Button> {
+                    text: "Save"
+                    onClick: Save
+                }
+                cancel_button: <Button> {
+                    text: "Cancel"
+                }
+            } // Close variant ends
+
+            // Array variant example
+            colors: [
+                #f00,
+                #0f0,
+                #00f
+            ]
+        }
+    }
+
+    // Define components under root node
+    MyButton = <Button> {
+        // Button's type info will be compiled to LiveValue::Deref
+        width: 100
+        height: 40
+        draw_bg: {color: #f00}
+    }
+
+    // Clone existing component
+    DefaultButton = <Button>{}  // Generates Clone variant
+
+    // Use dereferencing
+    ButtonRef = <ButtonBase> {  // Generates Deref variant
+        walk: {width: Fill}
+    }
+}
+```
+## Further Reading: Serialization and Deserialization Format
+
+Makepad Live values go through serialization and deserialization at runtime. For this, Makepad uses [CBOR](https://datatracker.ietf.org/doc/html/rfc8949) (Concise Binary Object Representation) format.
+
+`CBOR` has several key features that make it particularly suitable for Makepad:
+
+### 1. Compact Encoding
+
+```rust
+// CBOR type info and length usually need only 1 byte
+const CBOR_UTF8_START: u8 = 0x60;  // String (0-23 bytes)
+const CBOR_ARRAY_START: u8 = 0x80; // Array (0-23 elements)
+const CBOR_MAP_START: u8 = 0xa0;   // Map (0-23 key-value pairs)
+
+// Example
+let value = "ok";
+// CBOR: [0x62, b'o', b'k']  // 3 bytes
+// JSON: "\\\\"ok\\\\""          // 4 bytes
+```
+
+### 2. Self-describing and Type-safe
+
+```rust
+// CBOR natively supports multiple data types
+impl LiveValue {
+    fn to_cbor(&self) -> Vec<u8> {
+        match self {
+            LiveValue::Int64(i) => [0x1b, /* 8-byte integer */],
+            LiveValue::Float64(f) => [0xfb, /* 8-byte float */],
+            LiveValue::Bool(true) => [0xf5],
+            LiveValue::Bool(false) => [0xf4],
+            LiveValue::String(_) => [0x60 + len, /* UTF8 bytes */],
+            // ...
+        }
+    }
+}
+```
+
+### 3. Incremental Parsing Capability
+
+```rust
+// CBOR can be parsed in a streaming fashion
+fn parse_cbor(data: &[u8], offset: &mut usize) -> Result<LiveValue> {
+    match data[*offset] {
+        tag if tag >= CBOR_UTF8_START => {
+            // Directly get string length
+            let len = (tag - CBOR_UTF8_START) as usize;
+            *offset += 1;
+            // Only parse needed portion
+            let str_data = &data[*offset..*offset + len];
+            *offset += len;
+            Ok(LiveValue::String(str_data))
+        }
+        // ...
+    }
+}
+```
+### 4. Binary-friendly
+
+```rust
+// Supports direct byte operations
+fn read_u16(data: &[u8], o: &mut usize) -> u16 {
+    let val = u16::from_be_bytes([data[*o], data[*o + 1]]);
+    *o += 2;
+    val
+}
+
+// Supports zero-copy
+fn decode_str<'a>(data: &'a [u8]) -> &'a str {
+    // Create string reference directly from byte slice
+    std::str::from_utf8(&data[start..end]).unwrap()
+}
+```
+### 5. Good Extensibility
+
+```rust
+// CBOR supports custom tags
+const CBOR_TAG_DATE_TIME: u64 = 0;
+const CBOR_TAG_BIGNUM: u64 = 2;
+const CBOR_TAG_CUSTOM: u64 = 27; // Makepad custom tag
+
+// Can add custom types
+fn encode_custom_type(&self) -> Vec<u8> {
+    let mut data = vec![];
+    data.push(CBOR_TAG_CUSTOM);
+    // ... encode custom data
+    data
+}
+```
+
+### 6. Performance Advantages
+
+```rust
+// 1. Quick type checking
+fn is_string(byte: u8) -> bool {
+    byte >= CBOR_UTF8_START && byte <= CBOR_UTF8_END
+}
+
+// 2. Efficient length retrieval
+fn get_length(byte: u8) -> usize {
+    (byte - CBOR_UTF8_START) as usize  // Single byte operation
+}
+
+// 3. Direct memory access
+fn get_bytes(data: &[u8], o: &mut usize) -> &[u8] {
+    let slice = &data[*o..*o + len];
+    *o += len;
+    slice
+}
+```
+
+### 7. Suitable for Hot Reloading
+
+```rust
+// 1. Easy to compare changes
+fn detect_changes(old: &[u8], new: &[u8]) -> Changes {
+    // CBOR format facilitates byte-by-byte comparison
+}
+
+// 2. Supports partial updates
+fn apply_patch(original: &mut [u8], patch: &[u8]) {
+    // Can update only changed portions
+}
+```
+
+In summary, CBOR provides Makepad with:
+
+1. Efficient serialization/deserialization
+2. Good extensibility
+3. Features suitable for hot reloading
+4. Binary-friendly operations
+5. Self-describing type system
+
+## Imports and Resource Dependencies
+
+### Importing other Live modules
+
+```rust
+// 导入单个组件
+use makepad_widgets::base::Button
+
+// 导入整个模块
+use makepad_widgets::theme_desktop_dark::*
+
+// 带别名的导入
+use makepad_widgets::base::Button as CustomButton
+pub CustomButton
+```
+### Resource dependencies
+
+```rust
+MyComponent = {
+    // Reference project resources
+    icon: dep("crate://self/resources/icons/home.svg"),
+
+    // Reference external package resources
+    theme: dep("crate://makepad-widgets/resources/theme.json")
+
+    // Reference external fonts
+    // <https://github.com/lxgw/LxgwWenKai>
+    // LXGW WenKai
+    TEXT_LXG_BOLD_FONT = {
+        font_size: (FONT_SIZE_SUB),
+        font: {path: dep("crate://makepad-widgets/resources/LXGWWenKaiBold.ttf")}
+    }
+}
+```

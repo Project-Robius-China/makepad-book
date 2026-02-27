@@ -1,0 +1,219 @@
+# 自定义 Button Widget
+
+让我们创建一个自定义 Button 组件。
+
+完整代码如下，可查看代码中的注释：
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    use link::theme::*;
+    use link::shaders::*;
+    use link::widgets::*;
+
+    // 定义一个通用的按钮样式
+    // 继承自 Button
+    pub MyButton = {{MyButton}} <Button> {
+        width: 200, // 按钮宽度
+        height: 50, // 按钮高度
+        margin: {left: 20, right: 20}, // 按钮左右外边距
+
+        text: "My Button", // 按钮文字
+        draw_text: {
+            color: #ffffff // 文字颜色为白色
+        },
+
+        draw_bg: {
+            // 这里最多定义 6 个 instance，否则报错 subtract with overflow
+            instance background_color: #0000ff, // 背景色
+            instance hover_color: #0055ff, // 鼠标悬停时的颜色
+            instance pressed_color: #00008B, // 鼠标按下时的颜色
+
+            instance border_width: 1.0, // 边框宽度
+            instance border_color: #00f3ff, // 边框颜色
+
+            instance glow: 0.0, // 发光效果控制
+            instance hover: 0.0, // 控制鼠标悬停效果
+            instance pressed: 0.0, // 控制鼠标按下效果
+
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                // sdf.box(0.0, 0.0, self.rect_size.x, self.rect_size.y, 8.0);
+
+                // 计算缩放和位移
+                let scale = 1.0 - self.pressed * 0.04; // 按下时稍微缩小
+                let size = self.rect_size * scale;
+                let offset = (self.rect_size - size) * 0.5; // 居中
+
+                // 绘制外层发光
+                sdf.box(
+                    offset.x ,  // 向外扩展4个像素
+                    offset.y ,
+                    size.x ,    // 两边各扩展4个像素
+                    size.y ,
+                    9.0            // 稍大的圆角
+                );
+
+                // 发光效果 - 使用半透明的边框颜色
+                let glow_alpha = self.glow * 0.5; // 控制发光强度
+                sdf.fill_keep(vec4(self.border_color.xyz, glow_alpha));
+
+
+                // 简化绘制，只保留主体
+                sdf.box(
+                    offset.x,
+                    offset.y,
+                    size.x,
+                    size.y,
+                    8.0
+                );
+
+                // 未按下时显示阴影,按下时减弱阴影
+                let shadow_alpha = (1.0 - self.pressed) * 0.2;
+                sdf.fill_keep(vec4(0.,0.,0.,shadow_alpha));
+
+                // 基础颜色
+                let base_color = self.background_color;
+
+                // hover效果通过降低透明度来实现,不直接修改颜色
+                let hover_alpha = self.hover * 0.2;
+                let color_with_hover = mix(
+                    base_color,
+                    vec4(1.0, 1.0, 1.0, 1.0),
+                    hover_alpha
+                );
+
+                // pressed效果
+                let final_color = mix(
+                    color_with_hover,
+                    self.pressed_color,
+                    self.pressed
+                );
+
+
+                // 先填充主体颜色
+                sdf.fill_keep(final_color);
+
+                // 边框发光效果
+                let border_glow = max(self.hover * 0.5, self.glow);
+                let border_color = mix(
+                    self.border_color,
+                    vec4(1.0, 1.0, 1.0, 0.8),
+                    border_glow
+                );
+                sdf.stroke(border_color, self.border_width);
+
+                return sdf.result
+            }
+        }
+
+    }
+}
+
+
+// 定义组件结构体
+#[derive(Live,Widget)]
+pub struct MyButton {
+    // 继承 Button 的所有功能
+    #[deref]
+    button: Button,
+    #[rust]
+    initialized: bool, // 标记是否已初始化
+}
+
+impl LiveHook for MyButton {
+    fn after_new_from_doc(&mut self, cx: &mut Cx) {
+        log!("MyButton: after_new_from_doc");
+        self.initialized = true; // 在创建后就将其标记为已初始化
+        self.button.after_new_from_doc(cx);
+        log!("button text is empty? {:?}", self.button.text.as_ref())
+    }
+
+    fn before_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        log!("MyButton: before_apply");
+        self.button.before_apply(cx, apply, index, nodes);
+    }
+
+    fn after_apply(&mut self, cx: &mut Cx, apply: &mut Apply, index: usize, nodes: &[LiveNode]) {
+        log!("MyButton: after_apply");
+        self.button.after_apply(cx, apply, index, nodes);
+    }
+}
+
+
+impl Widget for MyButton {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        log!("MyButton handle_event");
+        log!("MyButton not initialized!");
+        self.button.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        log!("MyButton draw_walk");
+        self.initialized = true;
+        log!("MyButton initialized!");
+        self.button.draw_walk(cx, scope, walk)
+    }
+}
+
+impl MyButtonRef {
+    pub fn clicked(&self, actions: &Actions) -> bool {
+        self.borrow().map(|button| button.button.clicked(actions)).unwrap_or(false)
+    }
+
+    pub fn apply_over(&self, cx: &mut Cx, nodes: LiveNodeSlice) {
+        if let Some(mut inner) = self.borrow_mut() {
+            log!("Applying style to MyButton");
+            // 应用样式到内部按钮
+            inner.button.apply_over(cx, nodes);
+            // 确保重绘
+            inner.button.redraw(cx);
+        } else {
+            log!("Failed to borrow MyButton - this may indicate an initialization problem");
+        }
+    }
+
+    pub fn set_text_and_redraw(&self, cx: &mut Cx, text: &str) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.button.set_text_and_redraw(cx, text);
+            inner.button.redraw(cx);
+        }
+    }
+
+    // 添加检查方法
+    pub fn is_some(&self) -> bool {
+        self.borrow().is_some()
+    }
+}
+```
+
+总的来说，这段代码定义了一个高度可定制的按钮组件 `MyButton`，具有丰富的视觉效果如发光、阴影、悬停变色等。它继承了 `Button` 的功能,还添加了初始化检查和一些辅助方法。通过 `live_design!` 宏可以方便地定义按钮的样式。
+
+- live_design! 宏中定义了按钮的样式和属性，包括:
+    - 按钮的尺寸、外边距
+    - 按钮的文字内容和颜色
+    - 按钮的背景色,包括普通状态、悬停状态、按下状态的颜色
+    - 按钮的边框宽度和颜色
+    - 按钮的发光效果、悬停效果、按下效果的控制变量
+    - 按钮的绘制函数 pixel(),详细定义了如何绘制按钮的各个部分,包括发光、阴影、主体颜色、边框等
+- MyButton 结构体定义了按钮组件，它继承了 Button 的所有功能,还添加了一个 `initialized` 字段来标记是否已初始化。
+- 实现了 `LiveHook` trait,定义了组件在不同生命周期的行为:
+    - `after_new_from_doc()`: 创建后将 `initialized` 设为 true,表示已初始化
+    - `before_apply()` 和 `after_apply()`: 在应用属性前后执行一些操作
+- 实现了 Widget trait,定义了组件的事件处理和绘制行为:
+    - `handle_event()`: 处理事件
+    - `draw_walk()`: 绘制组件
+- 为 `MyButtonRef` 实现了一些方法:
+    - `clicked()`: 检查按钮是否被点击
+    - `apply_over()`: 应用样式到按钮
+    - `set_text_and_redraw()`: 设置按钮文字并重绘
+    - `is_some()`: 检查按钮是否存在
+
+特别说明：定义 Widget 主要的 Live 属性标记如下。
+
+- `#[live]` - 表示此属性可在DSL中访问和修改
+- `#[rust]` - 表示此属性只在Rust代码中使用
+- `#[calc]` - 表示这是一个计算属性
+- `#[live(default)]` - 带默认值的属性
+- `#[deref]` - 表示继承另一个组件的属性

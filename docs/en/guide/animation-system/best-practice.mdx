@@ -1,0 +1,12 @@
+# Best Practices and Optimization
+
+When implementing Makepad animations, there are two key principles to keep in mind: `control` and `smoothness`.
+
+Here are several important best practices:
+
+1. State Management: Always maintain clear animation states, using boolean flags like `is_animating` to track animation status.
+2. Performance Optimization:
+    - Use `redraw: true` only when redraw is necessary
+    - Set reasonable animation durations to avoid overly frequent state updates
+3. Error Handling: Consider edge cases during state transitions and frame updates
+4. Parameter Configuration: Provide flexible configuration interfaces allowing runtime animation parameter adjustments

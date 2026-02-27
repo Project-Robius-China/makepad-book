@@ -1,5 +1,6 @@
-import { memo } from 'react';
-import styles from './index.module.css';
+import { memo, useCallback } from 'react';
+import { useNavigate } from 'rspress/runtime';
+import styles from './index.module.scss';
 
 export interface HeroProps {
     logo: string;

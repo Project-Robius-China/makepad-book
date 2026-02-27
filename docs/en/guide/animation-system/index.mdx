@@ -1,0 +1,176 @@
+# Concepts
+
+## Animation System Overview
+
+Makepad's animation system is a declarative animation framework that manages UI animations through the concepts of States and Transitions.
+
+Let's gain a deeper understanding of the entire system through a "typing" animation component.
+
+## Key Concepts
+
+Let's first look at the Animator's core data structure:
+
+```rust
+pub struct Animator {
+    // Whether to ignore missing animation states
+    pub ignore_missing: bool,
+    // Reference to animation definition in Live DSL
+    pub live_ptr: LiveRef,
+    // Current animation state data
+    pub state: Option<Vec<LiveNode>>,
+    // Next frame scheduler
+    pub next_frame: NextFrame,
+}
+```
+
+This structure appears simple but is actually a very elegant design:
+
+1. `live_ptr` - Maintains reference to animation definition in Live DSL, allowing Animator to lookup and load animation state definitions when needed
+2. `state` - Stores currently executing animation state, including all ongoing interpolation calculations
+3. `next_frame` - Used for scheduling the next animation frame render
+
+### Animation State Management
+
+This system works based on state transitions:
+
+1. Each state is identified by a pair of LiveId identifiers (`[LiveId; 2]`)
+2. State transitions are handled through two main methods:
+    - `animate_to()`: Smooth transition to new state
+    - `cut_to()`: Direct switch to new state
+
+```rust
+impl Animator {
+    // Hard switch to specified state
+    pub fn cut_to(&mut self, cx: &mut Cx, state_pair: &[LiveId; 2], index: usize, nodes: &[LiveNode]) {
+        // Get current state or create new state
+        let mut state = self.swap_out_state().unwrap_or(Vec::new());
+        let track = state_pair[0];
+
+        // Initialize state structure
+        if state.len() == 0 {
+            state.push_live(live!{
+                tracks: {},
+                state: {}
+            });
+        }
+
+        // Update track state
+        state.replace_or_insert_last_node_by_path(0, &[live_id!(tracks).as_field(), track.as_field()],
+            live_object!{
+                [track]: {state_id: (state_pair[1]), ended: 1}
+            }
+        );
+
+        // Apply state values
+        let mut path = Vec::new();
+        path.push(live_id!(state).as_field());
+
+        // ... Code for reading and applying state values ...
+
+        self.swap_in_state(state);
+    }
+
+    // Animate transition to specified state
+    pub fn animate_to(&mut self, cx: &mut Cx, state_pair: &[LiveId; 2], index: usize, nodes: &[LiveNode]) {
+        // Similar to cut_to, but creates interpolation animation
+        let mut state = self.swap_out_state().unwrap_or(Vec::new());
+
+        // ... Set up animation track
+        state.replace_or_insert_last_node_by_path(0, &[live_id!(tracks).as_field(), track.as_field()],
+            live_object!{
+                [track]: {
+                    state_id: (state_pair[1]),
+                    ended: 0,
+                    time: void
+                }
+            }
+        );
+
+        // ... Create interpolation animation
+
+        self.swap_in_state(state);
+        self.next_frame = cx.new_next_frame();
+    }
+}
+```
+### Key Animation Update Mechanism Code Structure
+
+```rust
+impl Animator {
+    pub fn handle_event(&mut self, cx: &mut Cx, event: &Event) -> AnimatorAction {
+        if let Event::NextFrame(nf) = event {
+            // Check if it's our next frame
+            if !nf.set.contains(&self.next_frame) {
+                return AnimatorAction::None
+            }
+
+            // Update all active animation tracks
+            let state_nodes = self.state.as_mut().unwrap();
+            let mut ended = true;
+            let mut redraw = false;
+
+            // ... Iterate and update all animation tracks
+
+            // If animations are still running, request next frame
+            if !ended {
+                self.next_frame = cx.new_next_frame();
+            }
+
+            return AnimatorAction::Animating {redraw}
+        }
+        AnimatorAction::None
+    }
+}
+```
+
+### Keyframe Interpolation Calculation
+
+```rust
+impl Animator {
+    fn update_timeline_value(
+        cx: &mut Cx,
+        index: usize,
+        nodes: &mut [LiveNode],
+        ext_time: f64
+    ) -> (bool, bool) {
+        // Extract keyframes
+        let mut prev_kf: Option<KeyFrame> = None;
+
+        // Calculate interpolation at current time point
+        for key_frame in key_frames {
+            if time >= prev_kf.time && time <= key_frame.time {
+                let normalized_time = (time - prev_kf.time) /
+                    (key_frame.time - prev_kf.time);
+
+                // Apply easing function
+                let mix = key_frame.ease.map(normalized_time);
+
+                // Interpolate based on value type
+                let new_val = match (prev_kf.value, key_frame.value) {
+                    // Numeric interpolation
+                    (LiveValue::Float64(a), LiveValue::Float64(b)) => {
+                        LiveValue::Float64((b - a) * mix + a)
+                    },
+                    // Color interpolation
+                    (LiveValue::Color(a), LiveValue::Color(b)) => {
+                        LiveValue::Color(Vec4::from_lerp(
+                            Vec4::from_u32(a),
+                            Vec4::from_u32(b),
+                            mix as f32
+                        ).to_u32())
+                    },
+                    // ... Other type interpolations
+                };
+
+                // Update current value
+                nodes[last_child_index].value = new_val;
+                return (ended, redraw)
+            }
+        }
+    }
+}
+```
+
+### Animation track (track) system
+
+The animation track (track) system allows for multiple properties to animate independently.

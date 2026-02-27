@@ -1,0 +1,187 @@
+# Turtle Draw 布局系统
+
+## 基本概念
+
+turtle布局系统包含以下核心概念：
+
+```rust
+pub struct Turtle {
+    // 当前海龟位置
+    walk: Walk,         // 布局行为
+    layout: Layout,     // 布局规则
+    wrap_spacing: f64,  // 换行间距
+    align_start: usize, // 对齐开始位置
+    defer_count: usize, // 延迟计数
+    shift: DVec2,      // 位移量
+    pos: DVec2,        // 当前位置
+    origin: DVec2,     // 起始位置
+    width: f64,        // 宽度
+    height: f64,       // 高度
+    width_used: f64,   // 已使用宽度
+    height_used: f64,  // 已使用高度
+}
+```
+
+## 基本绘制流程
+
+```rust
+// 开始一个 turtle 布局
+cx.begin_turtle(walk, layout);
+
+// 绘制过程示例
+turtle.move_to(10.0, 10.0);  // 移动到指定位置
+turtle.line_to(100.0, 100.0); // 画线到指定位置
+turtle.rect(0.0, 0.0, 50.0, 30.0); // 绘制矩形
+
+// 结束布局
+cx.end_turtle();
+```
+
+## 位置计算实例
+
+```rust
+impl Turtle {
+    // 计算下一个位置
+    pub fn next_pos(&mut self, size: DVec2) -> DVec2 {
+        match self.layout.flow {
+            Flow::Right => {
+                let pos = self.pos;
+                self.pos.x += size.x + self.layout.spacing;
+                self.width_used = self.width_used.max(self.pos.x);
+                pos
+            }
+            Flow::Down => {
+                let pos = self.pos;
+                self.pos.y += size.y + self.layout.spacing;
+                self.height_used = self.height_used.max(self.pos.y);
+                pos
+            }
+            // ... 其他流向的处理
+        }
+    }
+}
+```
+
+## 复杂布局示例
+
+### 嵌套布局
+
+```rust
+MyView = <View> {
+    // 外层 turtle
+    walk: {width: Fill, height: Fit},
+    layout: {flow: Down, spacing: 10},
+
+    // 内层 turtle
+    <View> {
+        walk: {width: Fill, height: Fit},
+        layout: {
+            flow: Right,
+            spacing: 5,
+            padding: {left: 10, right: 10}
+        },
+
+        // 内容组件
+        <Button> {}
+        <Button> {}
+    }
+}
+```
+
+### 延迟布局（Defer）机制
+
+当布局需要等待某些条件满足时，可以使用延迟布局：
+
+```rust
+impl Turtle {
+    pub fn defer_walk(&mut self, walk: Walk) -> Option<DeferWalk> {
+        if walk.abs_pos.is_some() {
+            return None;
+        }
+
+        // 处理延迟布局的逻辑
+        match self.layout.flow {
+            Flow::Right if walk.width.is_fill() => {
+                // 处理右向流式布局中的延迟
+                let spacing = self.child_spacing();
+                self.pos.x += spacing.x;
+                Some(DeferWalk::Unresolved{...})
+            }
+            // ... 其他情况处理
+        }
+    }
+}
+```
+
+## Turtle 布局对齐系统
+
+### 对齐方式
+
+```rust
+pub struct AlignEntry {
+    align_range: TurtleAlignRange,
+    size: DVec2,
+    shift: f64,
+    index: usize
+}
+
+impl Cx2d {
+    pub fn align_items(&mut self) {
+        // 遍历所有需要对齐的项
+        for item in &self.draw_align_list {
+            // 计算对齐位置
+            let shift = match self.layout.align {
+                Align::Center => {
+                    (self.width - item.size.x) * 0.5
+                },
+                // ... 其他对齐方式
+            };
+
+            // 应用对齐
+            self.shift_align_range(&item.align_range, shift);
+        }
+    }
+}
+```
+
+### 实际对齐示例
+
+```rust
+CenteredContent = <View> {
+    layout: {
+        flow: Down,
+        align: {x: 0.5, y: 0.0}  // 水平居中，顶部对齐
+    },
+
+    <Text> {
+        walk: {
+            width: Fit,
+            height: Fit
+        },
+        text: "Centered Text"
+    }
+}
+```
+## Turtle 性能优化
+
+**缓存机制**
+
+```rust
+pub struct DrawStateWrap<T: Clone> {
+    state: Option<T>,
+    redraw_id: u64,
+}
+
+impl<T: Clone> DrawStateWrap<T> {
+    pub fn begin(&mut self, cx: &mut Cx2d, init: T) -> bool {
+        if self.redraw_id != cx.redraw_id() {
+            // 只在必要时更新状态
+            self.redraw_id = cx.redraw_id();
+            self.state = Some(init);
+            true
+        } else {
+            false
+        }
+    }
+}
+```

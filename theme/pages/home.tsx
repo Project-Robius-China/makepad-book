@@ -1,4 +1,5 @@
-import { normalizeImagePath, useNavigate } from "@rspress/core/runtime";
+import { normalizeImagePath, useNavigate } from "rspress/runtime";
+import FullyFeatured from "../components/Home/FullyFeatured";
 import Hero from "../components/Home/Hero";
 import { useI18n, useI18nUrl } from "../i18n";
 import { useCallback } from "react";
@@ -29,6 +30,7 @@ export function HomeLayout() {
                 goToWebsiteButtonText={t('goToWebsite')}
                 onClickGoToWebsite={handleClickGoToWebsite}
             />
+            <FullyFeatured />
         </>
     )
 }

@@ -1,0 +1,10 @@
+[
+    "widgets-core",
+    "widgets-identity",
+    "widgets-layout",
+    "widgets-models",
+    "widgets-attachments",
+    "widgets-content",
+    "widgets-realtime",
+    "widgets-references"
+]

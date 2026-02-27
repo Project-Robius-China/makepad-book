@@ -1,0 +1,111 @@
+# 9 - 创建 SlideshowOverlay 
+
+在上一步中，我们创建了两个 SlideshowNavigateButtons，作为为我们的应用构建幻灯片播放功能的一部分。
+
+回顾一下幻灯片的结构：
+
+- 幻灯片（Slideshow）由一个单独的 Image 组成，上面覆盖一个透明的 SlideshowOverlay。
+- SlideshowOverlay 包含两个 SlideshowNavigateButtons，分别位于左右两侧。
+- 这两个 SlideshowNavigateButtons 将用鼠标来控制幻灯片的切换。
+
+在这一步，我们将创建 SlideshowOverlay。
+
+> **注意**：如果你不想手动输入代码，可以在这里找到本步骤的全部代码：https://github.com/makepad/image_viewer/tree/main/step_9
+
+## 你将学到的内容  
+
+在这一步中，你将学习：
+
+- 如何使用 `Filler` 来填充未使用的空间。
+- 如何处理键盘焦点（keyboard focus）。
+
+## 定义 SlideshowOverlay  
+
+我们先来添加 SlideshowOverlay 的定义。SlideshowOverlay 是一个透明的容器，位于 Image 之上，包含两个 SlideshowNavigateButtons。
+
+在 `app.rs` 中，添加以下代码到 live design 块里，紧跟在 SlideshowNavigateButton 的定义之后：
+
+```rust
+    SlideshowOverlay = <View> {
+        height: Fill,
+        width: Fill,
+        cursor: Arrow,
+        capture_overload: true,
+
+        navigate_left = <SlideshowNavigateButton> {}
+        <Filler> {}
+        navigate_right = <SlideshowNavigateButton> {}
+    }
+```
+
+这段代码定义了一个 SlideshowOverlay，具有以下属性：
+
+- `height: Fill` 和 `width: Fill` 确保覆盖层会拉伸以填满其容器。
+- `cursor: Arrow` 设置鼠标悬停在覆盖层上时，鼠标光标为箭头形状。
+- `capture_overload: true` 允许覆盖层捕获那些已经被其子元素捕获的事件（关于键盘焦点的工作机制，我们稍后会详细说明）。
+
+SlideshowOverlay 包含两个与上一步在 App 中添加的 SlideshowNavigateButtons 相同的按钮，不过这次在它们之间加入了一个 Filler：
+
+```rust
+    navigate_left = <SlideshowNavigateButton> {
+        draw_icon: { svg_file: (LEFT_ARROW) }
+    }
+    <Filler> {}
+    navigate_right = <SlideshowNavigateButton> {
+        draw_icon: { svg_file: (RIGHT_ARROW) }
+    }
+```
+
+Filler 是一个辅助控件，用于填充容器中未使用的空间。这保证了第一个 SlideshowNavigateButton 被布局在左侧，而第二个则被布局在右侧。
+
+### 处理键盘焦点  
+
+稍微展望一下，在后面的步骤中，我们将讨论如何为幻灯片放映处理用户事件。到那个时候，我们希望 SlideshowOverlay 负责处理键盘事件，因此现在讲讲键盘焦点是个好时机。
+
+在 Makepad 中，控件只有在拥有键盘焦点时才响应键盘事件——也就是说，它是接收键盘输入的活动控件。大多数内置控件，比如 View，只有在获得键盘焦点后才会响应按键。
+
+大多数内置控件在被点击时会自动获得键盘焦点——但前提是控件本身被直接点击。如果是它的子控件被点击，则焦点由该子控件获得，而不是父控件本身。
+
+对于 SlideshowOverlay，我们不希望这样：即使点击的是其中的 SlideshowNavigateButton，我们也希望 SlideshowOverlay 能获得键盘焦点。因此，我们之前添加了以下属性：
+
+- SlideshowNavigateButton 上的 `grab_key_focus: false`，防止按钮在被点击时抢占键盘焦点——允许父控件（即 overlay）抢占。
+- SlideshowOverlay 上的 `capture_overload: true`，允许 overlay 捕获已被其子控件捕获的事件，从而能够抢占键盘焦点。
+
+## 更新应用程序  
+
+既然我们已经有了一个 SlideshowOverlay，现在让我们更新 App 的定义，使其显示 SlideshowOverlay，而不是两个 SlideShowNavigateButtons。
+
+在 `app.rs` 文件中，用下面的代码替换 live design 块中 App 的定义：
+
+```rust
+    App = {{App}} {
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    <SlideshowOverlay> {}
+                }
+            }
+        }
+    }
+```
+
+## 检查到目前为止的进展  
+
+让我们来检查一下目前的进展。
+
+确保你在你的包目录中，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你应该会看到和之前一样的两个按钮，不过这次一个按钮位于左侧，另一个按钮位于右侧：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/SlideshowOverlay.png)
+
+当然，你真正看到的是覆盖层（overlay），但由于覆盖层本身是透明的，所以你只看到按钮。
+
+## 下一步
+
+在这一步中，我们创建了 SlideshowOverlay。在下一步中，我们将创建 Slideshow。
+

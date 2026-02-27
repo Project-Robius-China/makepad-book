@@ -1,0 +1,16 @@
+[
+    {
+        "type": "dir",
+        "name": "primitives",
+        "label": "primitives"
+    },
+    "close_path",
+    "fill_keep_premul",
+    "fill_keep",
+    "fill_premul",
+    "fill",
+    "line_to",
+    "move_to",
+    "stroke_keep",
+    "stroke"
+]

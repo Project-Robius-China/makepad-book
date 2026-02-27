@@ -1,0 +1,324 @@
+# MPSL Shader Basic Syntax
+
+## Differences Between MPSL and Rust Syntax
+
+While MPSL shader language has similar syntax to Rust, there are some fundamental differences between them.
+
+### Type System Differences
+
+MPSL's type system is simpler and focused on graphics computation:
+
+```rust
+// Rust type system
+let x: i32 = 42;
+let y: f64 = 3.14;
+let v: Vec<i32> = vec![1, 2, 3];
+
+// MPSL type system
+let x: float = 42.0;
+let v: vec4 = vec4(1.0, 0.0, 0.0, 1.0);
+```
+
+MPSL primarily focuses on graphics-related basic types like `float`, `vec2`, `vec3`, `vec4`, `mat4`, etc., and doesn't support complex data structures like Vec, HashMap that exist in Rust. This simplification is designed to match GPU computing characteristics.
+
+### Memory Management
+
+Rust's ownership system and default immutability are completely absent in MPSL:
+
+```rust
+// Ownership and borrowing in Rust
+let mut s = String::from("hello");
+let r = &mut s;  // Mutable borrow
+r.push_str(" world");
+
+// Simple value passing in MPSL, default mutable
+let color = vec4(1.0, 0.0, 0.0, 1.0);
+let modified = color * 0.5;  // Direct operation, no ownership concept
+```
+MPSL doesn't need to consider memory management because shader program lifecycles are controlled by GPU execution processes.
+
+### Function Definition and Usage
+
+MPSL's function system is simpler, primarily centered around vertex and pixel shading:
+
+```rust
+// Rust function definition
+fn calculate_sum(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// MPSL shader functions
+fn vertex(self) -> vec4 {
+    // Must return clip space coordinates
+    return self.transform_position();
+}
+
+fn pixel(self) -> vec4 {
+    // Must return color value
+    return self.color;
+}
+```
+MPSL's self parameter is special, containing shader context information, which is quite different from Rust's self concept.
+
+### Variable Scope
+
+MPSL introduces special variable scope concepts:
+
+```rust
+// MPSL-specific variable declarations
+instance border_width: float  // Instance variable
+varying pos: vec2            // Variable passed from vertex to pixel shader
+uniform time: float          // Uniform variable
+
+// Rust variable declarations
+let border_width: f32 = 1.0;  // Regular variable
+static TIME: f32 = 0.0;       // Static variable
+```
+These special variable types reflect characteristics of the graphics rendering pipeline, concepts that don't exist in Rust.
+
+### Control Flow Structures
+
+MPSL has more limited control flow:
+
+```rust
+// Rust's flexible control flow
+match value {
+    0 => println!("zero"),
+    1 => println!("one"),
+    _ => println!("other"),
+}
+
+// MPSL's simplified control flow
+if value < 0.5 {
+    return vec4(1.0, 0.0, 0.0, 1.0);
+} else {
+    return vec4(0.0, 1.0, 0.0, 1.0);
+}
+```
+MPSL doesn't support advanced control flow structures like `match`, `loop`, etc., that exist in Rust, primarily due to GPU execution model limitations.
+
+### Special Feature Support
+
+MPSL includes specialized graphics processing features:
+
+```rust
+// MPSL's SDF functionality
+fn pixel(self) -> vec4 {
+    let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+    sdf.circle(100.0, 100.0, 50.0);
+    return sdf.fill(self.color);
+}
+
+// Rust would need external libraries for similar functionality
+use graphics_lib::draw_circle;  // Hypothetical graphics library
+```
+
+These built-in graphics processing features are characteristic of MPSL; in Rust, you typically need to rely on external libraries.
+
+### Error Handling
+
+Error handling approaches differ significantly:
+
+```rust
+// Error handling in Rust
+fn process() -> Result<i32, Error> {
+    let value = some_operation()?;
+    Ok(value)
+}
+
+// MPSL basically has no error handling
+fn pixel(self) -> vec4 {
+    // Shader execution simply stops on failure
+    let color = self.compute_color();
+    return color;
+}
+```
+MPSL has no `Result` or `Option` types and doesn't need error handling mechanisms, as shader programs must execute correctly.
+
+## MPSL Basic Syntax
+
+### Basic Program Structure
+
+MPSL shader programs primarily consist of these parts:
+
+```rust
+// Vertex shader
+fn vertex(self) -> vec4 {
+    // Returns clip space coordinates
+    return self.clip_and_transform_vertex(self.rect_pos, self.rect_size);
+}
+
+// Fragment (pixel) shader
+fn pixel(self) -> vec4 {
+    // Returns RGBA color value
+    return self.color;
+}
+```
+
+
+### Data Types
+
+MPSL provides the following basic data types:
+
+```rust
+// Scalar types
+float           // Floating point number
+int             // Integer
+bool            // Boolean value
+
+// Vector types
+vec2            // 2D vector (x,y)
+vec3            // 3D vector (x,y,z)
+vec4            // 4D vector (x,y,z,w) commonly used for color (r,g,b,a)
+
+// Matrix types
+mat4            // 4x4 matrix
+
+// Sampler types
+texture2d       // 2D texture
+textureOES      // External texture (video etc.)
+```
+### Variable Declaration
+
+```rust
+// Instance variables - can be changed for each draw instance
+instance border_width: float
+instance color: vec4
+
+// Varying variables - pass data between vertex and pixel shaders
+varying pos: vec2
+
+// Uniform variables - globally uniform values
+uniform time: float
+
+// Texture declaration
+texture tex: texture2d
+```
+
+### Built-in Functions
+
+```rust
+// Mathematical functions
+sin(x)          // Sine
+cos(x)          // Cosine
+pow(x,y)        // x to the power of y
+sqrt(x)         // Square root
+mix(x,y,a)      // Linear interpolation
+clamp(x,min,max) // Range limitation
+
+// Texture sampling
+sample2d(tex, uv)         // 2D texture sampling
+sample2d_rt(tex, uv)      // Render target texture sampling
+sample2dOES(tex, uv)      // External texture sampling
+```
+
+### SDF (Signed Distance Field)
+
+MPSL provides powerful SDF functionality for shape drawing
+
+```rust
+// Create SDF viewport
+let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+// Basic shapes
+sdf.circle(x, y, radius)              // Circle
+sdf.box(x, y, width, height, radius)  // Rounded rectangle
+sdf.rect(x, y, width, height)         // Rectangle
+
+// Operations
+sdf.fill(color)           // Fill
+sdf.fill_keep(color)      // Fill and preserve shape
+sdf.stroke(color, width)  // Stroke
+```
+
+### Control Flow Statements
+
+```rust
+// Conditional statements
+if condition {
+    // Code block
+} else {
+    // Code block
+}
+
+// Loops
+for i in 0..count {
+    // Loop body
+}
+
+// Early return
+return value;
+```
+
+###  Shader Attributes
+
+```rust
+draw_bg: {
+    // Available shape types
+    shape: Solid,          // Solid shape
+    shape: Rectangle,      // Rectangle
+    shape: Circle,         // Circle
+    shape: RoundedRect,    // Rounded rectangle
+
+    // Basic fill types
+    fill: Color,           // Solid color fill
+    fill: Texture,         // Texture fill
+    fill: Pattern,         // Pattern fill
+    fill: Gradient,        // Gradient fill
+}
+```
+
+:::tip Note:
+
+- shape and fill properties are more like declarative markers, informing the system and other developers of the shader's intent
+- The actual drawing effect needs to be implemented through SDF API in the pixel function
+
+:::
+
+### Practical Example
+
+A complete rounded rectangle shader example:
+
+```rust
+// 1. Rounded Rectangle
+shapes = <View> {
+    show_bg: true,  // Enable background drawing
+    draw_bg: {      // Main shader configuration
+        // Instance variables that can be modified per instance
+        instance stroke_width: 1.0    // Stroke width
+        instance border_width: 2.0    // Border width
+        instance border_color: #000   // Border color
+        instance fill_color: #f00f    // Fill color
+
+        // Helper function: create rounded rectangle
+        fn rounded_rectangle(self) -> vec4 {
+            // Create a 2D signed distance field viewport, mapped to our rectangle size
+            let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+            // Draw a box (rounded rectangle), parameters are:
+            sdf.box(
+                0.0,                // x position (left edge)
+                0.0,                // y position (top edge)
+                self.rect_size.x,   // rectangle width
+                self.rect_size.y,   // rectangle height
+                10.0               // corner radius - makes corners round
+            );
+
+            // Fill shape with fill_color while preserving SDF for border drawing
+            sdf.fill_keep(self.fill_color);
+
+            // Add border with specified color and width
+            sdf.stroke(self.border_color, self.border_width);
+
+            // Return final composite color result
+            return sdf.result;
+        }
+
+        // Main pixel shader function
+        fn pixel(self) -> vec4 {
+            // Must include return
+            return self.rounded_rectangle();
+        }
+    }
+}
+```

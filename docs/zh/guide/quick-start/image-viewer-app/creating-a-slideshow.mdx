@@ -1,0 +1,83 @@
+# 10 - 创建幻灯片放映  
+
+在上一步中，我们创建了 SlideshowOverlay，作为为我们的应用构建幻灯片放映的一部分。
+
+回顾一下幻灯片的结构如下：
+
+- 幻灯片由一张图片组成，顶部覆盖一个透明的 SlideshowOverlay。
+- SlideshowOverlay 包含两个 SlideshowNavigateButtons，分别位于两侧。
+- 这两个 SlideshowNavigateButtons 用于通过鼠标导航幻灯片。
+
+在这一步，我们将创建 Slideshow。
+
+> **注意**：如果你不想跟着敲代码，可以在这里找到本步骤的全部代码：https://github.com/makepad/image_viewer/tree/main/step_10
+
+## 你将学到的内容  
+
+在这一步中，你将学到：
+
+- 如何将多个元素叠加堆叠显示。
+
+## 定义 Slideshow  
+
+让我们从添加 Slideshow 的定义开始。Slideshow 结合了一个 Image 和我们之前创建的 SlideshowOverlay。
+
+在 `app.rs` 文件的 live design 块中，添加以下代码，放在 SlideshowOverlay 定义之后：
+
+```rust
+    Slideshow = <View> {
+        flow: Overlay,
+
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+        overlay = <SlideshowOverlay> {}
+    }
+```
+
+这定义了一个具有以下属性的 Slideshow：
+
+- flow: Overlay 确保幻灯片的子元素叠加堆叠显示。
+
+## 更新 App  
+
+既然我们已经有了 Slideshow，现在让我们更新 App 的定义，使其显示 Slideshow，而不是 SlideshowOverlay。
+
+在 `app.rs` 文件中，用下面的代码替换 live design 块中 App 的定义：
+
+```rust
+    App = {{App}} {
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    slideshow = <Slideshow> {}
+                }
+            }
+        }
+    }
+```
+
+## 检查到目前为止的进展  
+
+让我们检查一下目前的进展。
+
+确保你在你的包目录中，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，你应该会看到和之前一样的两个按钮，不过这次它们背后有一张占位图片：
+
+![](https://publish-01.obsidian.md/access/2761c71cc8fcd60e8a34be708fcd655f/Tutorials/Image%20Viewer/Slideshow%20Placeholder.png)
+
+## 下一步
+ 
+在这一步中，我们创建了 Slideshow。
+
+我们现在有了一个幻灯片的初步实现。它功能还很有限——目前只显示一张占位图片，还不能响应用户事件。
+
+在接下来的几步中，我们将去除这些限制，让幻灯片变得动态起来。

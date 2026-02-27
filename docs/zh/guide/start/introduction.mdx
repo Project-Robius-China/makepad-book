@@ -4,10 +4,120 @@
 >
 > 仓库地址：[https://github.com/makepad/makepad](https://github.com/makepad/makepad)
 
-Makepad 是一个仍在开发中的、基于着色器并支持实时设计的开源 UI 框架。
-
 ## Makepad Book 介绍
 
-本章节当前为占位内容，后续将由你补充新的语法与示例。
+Makepad 之书，面向 Makepad 应用开发者和贡献者，系统地介绍了 Rust 跨平台 Makepad UI 框架的方方面面。
 
 ## Makepad 介绍
+
+Makepad 是一个用 Rust 编写的开源跨平台 UI 框架，并配有功能强大的创作应用程序 Makepad Studio。这种组合为用户界面开发提供了一种简化的方法，使开发人员和设计人员能够轻松创建现代、高性能的应用程序。
+
+Makepad 是使用 Rust 构建的，Rust 是一种现代、安全的编程语言。它可在本机和网络上运行，支持包括 Windows、Linux、macOS、iOS 和 Android 在内的所有主流平台。
+
+Makepad 以其超快的编译速度著称，可确保高效、无中断的开发体验。
+
+Makepad 用户界面基于着色器。这确保了它的高性能，使其适用于构建复杂的应用程序，如类似于 Photoshop 的应用程序，也适用于 2.5D UI，如 VR/AR 应用程序中的 2.5D UI。
+
+与 HTML 相比，该框架通过使用即时模式和简单的 DSL 简化了样式，无需复杂的 DOM 或 CSS。它还提供对 GPU 的直接访问，提供更多控制和灵活性，同时避免了与垃圾回收相关的问题，确保更流畅的性能。
+
+Makepad 最突出的功能之一是实时样式化，它允许在代码中立即反映用户界面的变化，反之亦然，无需重新编译或重启。这一功能大大缩小了开发人员与设计人员之间的差距，提高了整体工作效率。
+Makepad Studio 将这一切与自己的集成开发环境和类似 Figma 的可视化工具结合在一起，让设计师可以直观地直接在实际产品上工作。
+
+另一个关键组件是 Stitch，它是一个基于 Rust 的实验性 WebAssembly（WASM）解释器。Stitch 以其卓越的速度和轻量级性能而闻名，目前被认为是最快的 WASM 解释器。[待定：在 Makepad 中使用。Superapps，扩展系统，允许在不牺牲性能的情况下插入构件......］
+
+
+:::info Makepad诞生背景
+
+Makepad 诞生于六年前（2019），可以查看 [makepad history](https://github.com/makepad/makepad_history) 仓库了解 makepad 的最初设想。
+
+Makepad 的作者是 Rik Arends。这个名字也许很多人不熟悉，但是你一定听过 Cloud9 IDE 和 ACE 代码编辑器。
+
+- [Cloud9 IDE](https://aws.amazon.com/cn/cloud9/)： 成立于 2010 年，在 2016 年卖给了亚马逊。它是一种云 IDE，一个基于云的开源集成开发环境。它支持超过40种语言，包括：PHP和Ruby，Python和JavaScript/Node.js。它几乎完全用JavaScript编写，并使用Node.js上后端。
+
+- [Ace](https://ace.c9.io/)：一个用JavaScript编写的独立的代码编辑器。其目标是创建一个基于Web的代码编辑器，与现有的本地编辑器（如TextMate、Vim或Eclipse）的功能、可用性和性能相匹配并加以扩展。它可以很容易地嵌入到任何网页和JavaScript应用程序中。Ace是作为Cloud9 IDE的主要编辑器和Mozilla Skywriter项目的继承者而开发的
+
+Rik Arends 在创造这两个产品的时候，使用基于 HTML/CSS/Javascript 的 常见 Web 前端技术，他认为使用 HTML 作为 IDE 的 UI 简直是疯了，他深受折磨。比如，他最想做的代码折叠动画，用 HTML 等前端技术做起来非常困难。
+
+基于 Web 前端技术性能也非常慢，所以他就想用 Rust 重新实现一个 Native 的 UI 框架。
+
+:::
+
+下面视频中展示的 demo 是这个愿景的演示。
+
+<iframe style={{width: "100%", height: 500}} src="//player.bilibili.com/player.html?isOutside=true&aid=1706295249&bvid=BV1QT421k7ej&cid=1623232698&p=1"></iframe>
+
+可以访问 [https://github.com/acyanbird/makepad-book-simple](https://github.com/acyanbird/makepad-book-simple) 来本地运行此 demo
+
+在线体验（旧版），可以访问 [https://makepad.dev/](https://makepad.dev/)  
+此链接展现的并非最新的 makepad studio 版本，您可以从[这里](https://crates.io/crates/makepad-studio)下载最新版本。
+
+可以看到视频里：代码、3D树、设计图标都可以做到实时联动效果，视频最后还展示了惊艳的代码折叠动画效果。
+
+
+为了达到这样的愿景，`Makepad`提供了两大组成部分：
+
+- [Makepad Framework](/guide/start/makepad-framework)
+- [Makepad Studio](/guide/start/makepad-studio)
+
+## Makepad 本身的优势
+
+### 性能至关重要
+
+- 软件应该令人愉悦
+
+    当开发人员专注于他们的专长时，质量会得到提升。Makepad 的设计编辑器将让设计师们自己将用户界面提升到一个新的水平。
+
+- 应用程序下载应该快速
+
+    对于也在网络上运行的产品来说，文件大小至关重要。Makepad 项目体积小巧。
+
+- 工作应该只做一次
+
+    编写特定于跨平台的代码既耗时又费力。Makepad 项目在 Web 和原生平台上共享相同的代码。
+
+### 更好的工作流程带来更好的产品
+
+- 告别原型设计
+
+    当开发人员专注于他们的专长时，质量会得到提升。Makepad 的设计编辑器将让设计师们自己将用户界面提升到一个新的水平。
+
+- 工作流程应该简化
+
+    将一个绝妙的想法付诸实践的兴奋感值得被保护。Makepad 无阻碍的开发体验保护了开发者的动力。
+
+- 开发应该不间断
+
+    快速的编译时间可以保持思维的流畅。Makepad 证明了 Rust 可以令人惊叹地快速编译 —— 而且它的设计系统甚至是即时的。
+
+## Makepad 采用的技术栈的优劣
+
+**世界上不存在完美的技术栈，一切都只是权衡**，Makepad 也是在这种不断的权衡之下发展的。它也有自己的优势和劣势。
+
+
+### Rust
+- 优势
+    Rust 拥有很多优势，比如高性能、安全、强大的类型系统、可预测的运行时、强大的包管理器、与 C 无缝兼容的 ABI、官方维护的唯一编译器（无需考虑像C/Cpp 那样多个编译器差异）。这些都是选择 Rust 的理由。
+- 劣势
+    但是 Rust 来开发应用与有 GC 的语言比如 C# / Java / Kotlin / Javascript 等来说，相对困难得多，开发人员多用户群相对也较少。并且 Rust 在 UI 方面的生态系统仍然不够完善。这些算是采用 Rust 待挑战的地方。
+
+### 使用着色器来渲染 UI 样式
+- 优势
+    Makepad 使用`着色器来渲染 UI 样式`，是因为高性能，且着色器功能非常强大。
+- 劣势
+    但缺点也非常明显，耗电量很大，特别是屏幕绘制面积较大时。着色器语言也带来了学习负担。着色器编译时间也比较慢。
+
+### 混合即时模式
+Makepad 还采用了混合即时模式（Hybrid immediate mode，交替使用即时模式和保留模式）。
+- 优势
+    - 从代码角度来看，数据变化时更新 UI 非常简单。
+    - 布局也会更加简单。
+- 劣势
+    - 与 Swfit/ Flutter / React 是不同的模式，需要学习成本。 
+    - 布局模型也不像 flexbox 或 flutter 模式，但是可以扩展。
+
+### 渲染栈
+Makepad 也重新实现了`渲染栈（render stack）`
+- 优势
+    可以利用 GPU 来加速 UI，容易将设计能力整合到系统中。
+- 劣势
+    字体渲染需要重新进行，需要自己加载 ttf 文件，并且增加 Web/ 移动设备的包大小。难以与仅提供高级渲染结构（比如 HTML 或 本地平台的 UI 工具包） 用于本地功能和可访问性的系统集成（React Native 的优势所在）。将越来越多的本地 API 桥接到 Rust/Makepad 是一项巨大的任务。

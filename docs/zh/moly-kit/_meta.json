@@ -1,0 +1,13 @@
+[
+    "index",
+    {
+        "type": "dir",
+        "name": "start",
+        "label": "开发指南"
+    },
+    {
+        "type": "dir",
+        "name": "widgets",
+        "label": "组件"
+    }
+]

@@ -1,0 +1,309 @@
+# Shader 动画
+
+## MPSL 中的动画状态机
+
+在 MPSL 中，我们可以通过几种方式来实现动画效果。让我们通过「正在输入」动画的例子来理解：
+
+> 正在输入动画：就是某些 IM 在用户输入时候提示「xxx 正在输入 ... 」，后面跟随几个小球依次闪现或者依次弹跳的动画。
+
+```rust
+draw_bg: {
+    // 1. 通过 uniform 变量来控制动画参数
+    uniform freq: 5.0,        // 动画频率
+    uniform phase_offset: 102.0,  // 相位差
+    uniform dot_radius: 1.5,   // 点半径
+
+    // 2. 在 pixel 着色器中实现动画逻辑
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // 计算动画位置
+        let amplitude = self.rect_size.y * 0.22;  // 振幅
+        let center_y = self.rect_size.y * 0.5;    // 中心位置
+
+        // 通过 sin 函数创建周期运动
+        // self.time 是由 Rust 端传入的时间参数
+        let y1 = amplitude * sin(self.time * self.freq) + center_y;
+        let y2 = amplitude * sin(self.time * self.freq + self.phase_offset) + center_y;
+        let y3 = amplitude * sin(self.time * self.freq + self.phase_offset * 2.0) + center_y;
+
+        // 使用 SDF 绘制圆点
+        sdf.circle(self.rect_size.x * 0.25, y1, self.dot_radius);
+        sdf.fill(self.color);
+
+        sdf.circle(self.rect_size.x * 0.5, y2, self.dot_radius);
+        sdf.fill(self.color);
+
+        sdf.circle(self.rect_size.x * 0.75, y3, self.dot_radius);
+        sdf.fill(self.color);
+
+        return sdf.result;
+    }
+}
+```
+## MPSL 中的插值与过渡
+
+MPSL 提供了多种内置的插值函数，我们可以在着色器中直接使用：
+
+```rust
+fn pixel(self) -> vec4 {
+    // 1. 线性插值
+    let linear_value = mix(start_value, end_value, self.time);
+
+    // 2. 平滑插值
+    let smooth_value = smoothstep(0.0, 1.0, self.time);
+
+    // 3. 自定义缓动函数
+    fn custom_ease(t: float) -> float {
+        return t * t * (3.0 - 2.0 * t); // 平滑的 S 型曲线
+    }
+
+    // 4. 贝塞尔曲线插值
+    let bezier_value = Pal::bezier(
+        self.time,  // 时间参数
+        vec2(0.0, 0.0),  // P0
+        vec2(0.42, 0.0), // P1
+        vec2(0.58, 1.0), // P2
+        vec2(1.0, 1.0)   // P3
+    );
+}
+```
+
+插值在动画中非常重要，因为它能：
+
+1. 创建平滑的过渡效果
+2. 模拟自然的运动
+3. 控制动画的速度和节奏
+4. 实现各种视觉效果
+
+比如，当你想要一个按钮在被点击时平滑地改变颜色，或者让一个菜单优雅地滑入滑出，都需要使用插值来创造流畅的动画效果。
+
+## MPSL 中的高级动画技巧
+
+```rust
+draw_bg: {
+    // 1. 使用噪声函数创建随机运动
+    fn noise_movement(pos: vec2, time: float) -> float {
+        return sin(pos.x * 10.0 + time) * cos(pos.y * 10.0 + time) * 0.5;
+    }
+
+    // 2. 使用极坐标实现旋转效果
+    fn rotate_point(p: vec2, angle: float) -> vec2 {
+        let s = sin(angle);
+        let c = cos(angle);
+        return vec2(
+            p.x * c - p.y * s,
+            p.x * s + p.y * c
+        );
+    }
+
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // 3. 组合多个动画效果
+        let pos = self.pos - vec2(0.5);  // 中心化坐标
+        let rot_pos = rotate_point(pos, self.time);  // 旋转
+        let noise = noise_movement(rot_pos, self.time);  // 添加噪声
+
+        // 4. 使用 SDF 实现形状变形
+        let radius = 0.2 + noise * 0.1;
+        sdf.circle(rot_pos.x, rot_pos.y, radius);
+
+        // 5. 颜色动画
+        let color = mix(
+            #f00,  // 红色
+            #0f0,  // 绿色
+            sin(self.time) * 0.5 + 0.5
+        );
+
+        sdf.fill(color);
+        return sdf.result;
+    }
+}
+```
+## 正在输入动画完整代码
+
+来自 Robrix 项目：https://github.com/project-robius/robrix/blob/main/src/shared/typing_animation.rs
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    import makepad_widgets::base::*;
+    import makepad_widgets::theme_desktop_dark::*;
+    import makepad_draw::shader::std::*;
+
+    TypingAnimation = {{TypingAnimation}} {
+        width: 24,
+        height: 12,
+        flow: Down,
+        show_bg: true,
+        draw_bg: {
+            color: #x000
+            uniform freq: 5.0,  // Animation frequency
+            uniform phase_offset: 102.0, // Phase difference
+            uniform dot_radius: 1.5, // Dot radius
+            fn pixel(self) -> vec4 {
+                let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+                let amplitude = self.rect_size.y * 0.22;
+                let center_y = self.rect_size.y * 0.5;
+                // Create three circle SDFs
+                sdf.circle(
+                    self.rect_size.x * 0.25,
+                    amplitude * sin(self.time * self.freq) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.5,
+                    amplitude * sin(self.time * self.freq + self.phase_offset) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                sdf.circle(
+                    self.rect_size.x * 0.75,
+                    amplitude * sin(self.time * self.freq + self.phase_offset * 2) + center_y,
+                    self.dot_radius
+                );
+                sdf.fill(self.color);
+                return sdf.result;
+            }
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct TypingAnimation {
+    #[deref] view: View,
+    #[live] time: f32,
+    #[rust] next_frame: NextFrame,
+    #[rust] is_play: bool,
+}
+impl Widget for TypingAnimation {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        if let Some(ne) = self.next_frame.is_event(event) {
+            // ne.time 是以秒为单位的时间增量
+            self.time += ne.time as f32;
+            self.time = (self.time.round() as u32 % 360) as f32;
+            self.redraw(cx);
+            if !self.is_play {
+                return
+            }
+            // 请求下一帧
+            self.next_frame = cx.new_next_frame();
+        }
+
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+
+
+impl TypingAnimationRef {
+    /// Starts animation of the bouncing dots.
+    pub fn animate(&self, cx: &mut Cx) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = true;
+            inner.next_frame = cx.new_next_frame();
+        }
+    }
+    /// Stops animation of the bouncing dots.
+    pub fn stop_animation(&self) {
+        if let Some(mut inner) = self.borrow_mut() {
+            inner.is_play = false;
+        }
+    }
+}
+```
+
+### 对上述代码的一些可能的扩展与优化
+
+**在着色器中使用时间**
+
+```rust
+draw_bg: {
+    // 我们可以用不同方式处理时间来创造各种动画效果
+    fn pixel(self) -> vec4 {
+        // 1. 循环时间 - 创建周期性动画
+        let cycle_time = fract(self.time);  // 将时间限制在 0-1 之间
+
+        // 2. 弹性时间 - 创建弹跳效果
+        let bounce_time = abs(sin(self.time));
+
+        // 3. 累积时间 - 持续增长的效果
+        let grow_time = self.time;  // 不断增长的值
+
+        // 4. 延迟时间 - 创建序列动画
+        let delay_time = max(self.time - 1.0, 0.0); // 1秒后开始
+    }
+}
+```
+将用户的手势转换为着色器参数
+
+```rust
+draw_bg: {
+    // 手势参数
+    uniform touch_pos: vec2,  // 触摸位置
+    uniform touch_strength: float,  // 触摸强度
+
+    fn pixel(self) -> vec4 {
+        let sdf = Sdf2d::viewport(self.pos * self.rect_size);
+
+        // 计算到触摸点的距离
+        let dist_to_touch = distance(self.pos, self.touch_pos);
+
+        // 创建波纹效果
+        let ripple = sin(dist_to_touch * 50.0 - self.time * 5.0)
+            * exp(-dist_to_touch * 3.0)  // 衰减
+            * self.touch_strength;        // 强度
+
+        // 应用波纹扰动
+        let distorted_pos = self.pos + ripple * 0.1;
+
+        // 绘制扭曲的形状
+        sdf.circle(
+            distorted_pos.x * self.rect_size.x,
+            distorted_pos.y * self.rect_size.y,
+            10.0
+        );
+    }
+}
+```
+
+优化技巧：
+
+```rust
+// 优化的时间更新逻辑
+fn handle_event(&mut self, cx: &mut Cx, event: &Event) {
+    if let Some(ne) = self.next_frame.is_event(event) {
+        // 限制更新频率
+        if ne.time > 1.0/60.0 {  // 最大60fps
+            self.time += 1.0/60.0;
+        } else {
+            self.time += ne.time;
+        }
+
+        // 只在必要时请求下一帧
+        if self.is_animating {
+            self.next_frame = cx.new_next_frame();
+        }
+    }
+}
+
+// MPSL 优化
+draw_bg: {
+    // 预计算常用值
+    fn pixel(self) -> vec4 {
+        // 缓存计算结果
+        let base_animation = sin(self.time);
+
+        // 复用计算结果
+        let effect1 = base_animation * 0.5;
+        let effect2 = base_animation * 0.3;
+        let effect3 = base_animation * 0.2;
+    }
+}
+```

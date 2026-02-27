@@ -1,0 +1,14 @@
+[
+    "aa (float)",
+    "blur (float)",
+    "clip (float)",
+    "dist (float)",
+    "has_clip (float)",
+    "last_pos (vec2)",
+    "old_shape (float)",
+    "pos (vec2)",
+    "result (vec4)",
+    "scale_factor (float)",
+    "shape (float)",
+    "start_pos (vec2)"
+]

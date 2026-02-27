@@ -1,0 +1,17 @@
+[
+    {
+        "type": "dir",
+        "name": "builtin",
+        "label": "builtin"
+    },
+    {
+        "type": "dir",
+        "name": "fields",
+        "label": "fields"
+    },
+    {
+        "type": "dir",
+        "name": "methods",
+        "label": "methods"
+    }
+]

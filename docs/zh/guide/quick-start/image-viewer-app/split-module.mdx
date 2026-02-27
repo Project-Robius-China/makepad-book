@@ -1,0 +1,470 @@
+# 19 - 拆分模块
+
+在上一步中，我们实现了一个模态窗，并成功的把模态窗的触发与关闭绑定到了对应的按钮/事件上。同时，我们的应用代码都在 `app.rs` 下，显得十分冗长，难以维护。在这一步中，我们将会将应用拆成几个不同的组件，并且放入不同的模块中。
+
+## 你将学到的内容
+
+- 如何模块化构建 Makepad 项目。
+
+> **注意**: 如果你不想自己敲代码，可以在这里找到本步骤的完整代码： https://github.com/Project-Robius-China/image-viewer-workshop
+
+## 创建组件模块
+
+首先，我们在项目源码 `src` 文件夹下，创建新的文件夹 `components`, 并且创建根文件 `mod.rs`:
+
+```plaintext
+your-app/
+|—— resources
+├── Cargo.lock
+├── Cargo.toml
+├── src
+|   |—— components
+|   |     |—— mod.rs
+│   ├── app.rs
+│   ├── lib.rs
+│   └── main.rs
+```
+
+此时，整个组件模块需要被注册进 Makepad 的 `live` 系统中，在根组件 `app.rs` 中，将 `app.rs` 中的 `LiveRegister` 的实现代码改成：
+
+```rust
+impl LiveRegister for App {
+    fn live_register(cx: &mut Cx) {
+        makepad_widgets::live_design(cx);
+        crate::components::live_design(cx);
+    }
+}
+```
+
+这样，我们定义的组件模块就已经成功注册进了 Makepad 项目中。自定义的组件，只需要在组件模块下完成注册，就可以在项目中直接使用。
+
+## 创建组件
+
+在之前的内容中，我们知道整个应用定义了三个组件：`ImageItem`, `ImageRow`, `ImageGrid`。所有这里我们创建组件的目的就是将这三个组件从 `app.rs` 中抽离出来，做成单独的组件。
+
+### 创建 ImageItem 组件
+
+在原 `app.rs` 下，`ImageItem` 定义如下：
+
+```rust
+    ImageItem = <View> {
+        width: 256,
+        height: 256,
+
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+    }
+```
+
+现在我们要把 `ImageItem` 单独成一个独立的组件，在 `components` 文件夹下，创建一个新的文件，命名为 `image_item.rs`, 并将下面的代码，加入带新的文件中：
+
+```rust
+use makepad_widgets::*;
+
+live_design! {
+    use link::widgets::*;
+
+    PLACEHOLDER = dep("crate://self/resources/Rust.jpg");
+
+    pub ImageItem = {{ImageItem}} {
+        width: 256,
+        height: 256,
+        image_index: 0,
+
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+    }
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ImageItem {
+    #[deref]
+    view: View,
+}
+
+impl Widget for ImageItem {
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope);
+    }
+
+    fn draw_walk(&mut self, cx: &mut Cx2d, scope: &mut Scope, walk: Walk) -> DrawStep {
+        self.view.draw_walk(cx, scope, walk)
+    }
+}
+```
+
+> 在之前 [第 4 步](./creating-an-imagerow.mdx) 和 [第 5 步](./creating-an-imagegrid.mdx) 中已经详细讲解了关于组件定义的相关内容，这里只是把相关组件内容抽取到单独的模块，这里不加以赘述。
+
+之后，在 `mod.rs` 文件中，注册模块：
+
+```rust
+pub mod image_item;
+```
+
+同时，我们要把定义的这个 `ImageItem` 组件注册进入 Makepad 的 `live` 系统中，我们要在 `mod.rs` 文件下加入：
+
+```rust
+use makepad_widgets::*;
+
+pub fn live_design(cx: &mut Cx) {
+    image_item::live_design(cx);
+}
+```
+
+这一步，将定义的 `ImageItem` 组件成功注册进入了 Makepad 项目中，我们可以在应用中引用并且使用该组件。
+
+### 创建 ImageRow 和 ImageGrid 组件
+
+同样的，在 `components` 文件夹下，创建一个新的文件，命名为 `ImageRow.rs`:
+
+```rust
+use makepad_widgets::*;
+use crate::app::State;
+
+live_design! {
+    use link::widgets::*;
+    use crate::components::image_item::ImageItem;
+
+    pub ImageRow = {{ImageRow}} {
+        <PortalList> {
+            height: 256,
+            flow: Right,
+
+            ImageItem = <ImageItem> {}
+        }
+	}
+}
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ImageRow {
+    #[deref]
+    view: View,
+}
+
+impl Widget for ImageRow {
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+                let row_idx = *scope.props.get::<usize>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_images_for_row(row_idx));
+                while let Some(item_idx) = list.next_visible_item(cx) {
+                    if item_idx >= state.num_images_for_row(row_idx) {
+                        continue;
+                    }
+
+                    let item_widget_id = live_id!(ImageItem);
+                    let item = list.item(cx, item_idx, item_widget_id);
+
+                    let absolute_image_idx = state.first_image_idx_for_row(row_idx) + item_idx;
+
+                    item.apply_over(cx, live!{ image_index: (absolute_image_idx) });
+
+                    let filtered_image_idx = state.filtered_image_idxs[absolute_image_idx];
+
+                    let image_path = &state.image_paths[filtered_image_idx];
+                    let image_view = item.image(id!(image));
+                    image_view.load_image_file_by_path_async(cx, &image_path).unwrap();
+
+                    item.draw_all(cx, &mut Scope::empty());
+                }
+            }
+        }
+        DrawStep::done()
+    }
+
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope)
+    }
+}
+```
+
+其中：
+
+```rust
+use crate::components::image_item::ImageItem;
+```
+
+引入 `ImageItem` 组件，由于 `ImageItem` 完成了注册，可以在项目中直接引入。
+
+同样的，在 `components` 文件夹下，创建一个新的文件，命名为 `ImageGrid.rs`:
+
+```rust
+use makepad_widgets::*;
+use crate::app::State;
+
+
+live_design! {
+    use link::widgets::*;
+    use crate::components::image_row::ImageRow;
+
+    pub ImageGrid = {{ImageGrid}} {
+        <PortalList> {
+            flow: Down,
+            ImageRow = <ImageRow> {}
+        }
+    }
+}
+
+
+#[derive(Live, LiveHook, Widget)]
+pub struct ImageGrid {
+    #[deref]
+    view: View,
+}
+
+impl Widget for ImageGrid {
+    fn draw_walk(
+        &mut self,
+        cx: &mut Cx2d,
+        scope: &mut Scope,
+        walk: Walk,
+    ) -> DrawStep {
+        while let Some(item) = self.view.draw_walk(cx, scope, walk).step() {
+            if let Some(mut list) = item.as_portal_list().borrow_mut() {
+                let state = scope.data.get_mut::<State>().unwrap();
+
+                list.set_item_range(cx, 0, state.num_rows());
+                while let Some(row_idx) = list.next_visible_item(cx) {
+                    if row_idx >= state.num_rows() {
+                        continue;
+                    }
+
+                    let row = list.item(cx, row_idx, live_id!(ImageRow));
+                    let mut scope = Scope::with_data_props(state, &row_idx);
+                    row.draw_all(cx, &mut scope);
+                }
+            }
+        }
+        DrawStep::done()
+    }
+
+    fn handle_event(&mut self, cx: &mut Cx, event: &Event, scope: &mut Scope) {
+        self.view.handle_event(cx, event, scope)
+    }
+}
+```
+
+完成对组件 `ImageGrid` 的定义。最后在模块 `mod.rs` 下，声明注册这两个组件:
+
+```rust
+use makepad_widgets::*;
+
+pub mod image_item;
+pub mod image_row;
+pub mod image_grid;
+
+pub fn live_design(cx: &mut Cx) {
+    image_item::live_design(cx);
+    image_row::live_design(cx);
+    image_grid::live_design(cx);
+}
+```
+
+## 修改根组件内容
+
+由于我们将组件拆分到了组件模块中，在 `app.rs` 的 `live_design!` 中，我们要将最终使用的组件引入：
+
+```rust
+use crate::components::image_grid::ImageGrid;
+```
+
+其他内容我们没有修改，所以最终 `app.rs` 的 `live_design!` 中:
+
+```rust
+live_design! {
+    use link::widgets::*;
+    use link::theme::*;
+    use crate::components::image_grid::ImageGrid;
+
+    PLACEHOLDER = dep("crate://self/resources/Rust.jpg");
+    LEFT_ARROW = dep("crate://self/resources/left_arrow.svg");
+    RIGHT_ARROW = dep("crate://self/resources/right_arrow.svg");
+    LOOKING_GLASS = dep("crate://self/resources/looking_glass.svg");
+
+    AlertDialog = <Modal> {
+        width: Fill
+        height: Fill
+
+        bg_view: <View> {
+            width: Fill
+            height: Fill
+            show_bg: true
+            draw_bg: {
+                fn pixel(self) -> vec4 {
+                    return #00000080;
+                }
+            }
+        }
+
+        content: <View> {
+            width: Fit
+            height: Fit
+            padding: 20
+            flow: Down
+            align: {x: 0.5, y: 0.5}
+
+            draw_bg: {
+                color: #333
+            }
+
+            dialog = <RoundedView> {
+                width: 300
+                height: 150
+                align: {x: 0.5, y: 0.5}
+                draw_bg: {
+                    color: #333
+                    border_color: #555
+                    border_size: 1.0
+                    border_radius: 4.0
+                }
+                padding: 20
+
+
+                message = <Label> {
+                    width: Fill
+                    height: Fit
+                    align: {x: 0.5}
+                    margin: {bottom: 20}
+                    draw_text: {
+                        text_style: { font_size: 12.0 }
+                        color: #fff
+                    }
+                    text: "默认消息"
+                }
+            }
+        }
+    }
+
+    SearchBox = <View> {
+        width: 150,
+        height: Fit,
+        align: { y: 0.5 }
+        margin: { left: 75 }
+
+        <Icon> {
+            icon_walk: { width: 12.0 }
+            draw_icon: {
+                color: #8,
+                svg_file: (LOOKING_GLASS)
+            }
+        }
+
+        query = <TextInput> {
+            empty_text: "Search",
+            draw_text: {
+                text_style: { font_size: 10 },
+                color: #8
+            }
+        }
+    }
+
+    MenuBar = <View> {
+        width: Fill,
+        height: Fit,
+
+        <SearchBox> {}
+        <Filler> {}
+        slideshow_button = <Button> {
+            text: "Slideshow"
+        }
+    }
+
+    ImageBrowser = <View> {
+        flow: Down,
+
+        <MenuBar> {}
+        <ImageGrid> {}
+    }
+
+    SlideshowNavigateButton = <Button> {
+        width: 50,
+        height: Fill,
+        draw_bg: {
+            color: #fff0,
+            color_down: #fff2,
+        }
+        icon_walk: { width: 9 },
+        text: "",
+        grab_key_focus: false,
+    }
+
+    SlideshowOverlay = <View> {
+        height: Fill,
+        width: Fill,
+        cursor: Arrow,
+        capture_overload: true,
+
+        navigate_left = <SlideshowNavigateButton> {
+            draw_icon: { svg_file: (LEFT_ARROW) }
+        }
+        <Filler> {}
+        navigate_right = <SlideshowNavigateButton> {
+            draw_icon: { svg_file: (RIGHT_ARROW) }
+        }
+    }
+
+    Slideshow = <View> {
+        flow: Overlay,
+
+        image = <Image> {
+            width: Fill,
+            height: Fill,
+            fit: Biggest,
+            source: (PLACEHOLDER)
+        }
+        overlay = <SlideshowOverlay> {}
+    }
+
+    App = {{App}} {
+        placeholder: (PLACEHOLDER),
+
+        ui: <Root> {
+            <Window> {
+                body = <View> {
+                    flow: Overlay,
+
+                    page_flip = <PageFlip> {
+                        active_page: image_browser,
+
+                        image_browser = <ImageBrowser> {}
+                        slideshow = <Slideshow> {}
+                    }
+
+                    alert_dialog = <AlertDialog> {}
+                }
+            }
+        }
+    }
+}
+```
+
+## 检查到目前为止的进度
+
+让我们检查一下到目前为止的进展。
+
+确保你当前在你的包目录下，然后运行：
+
+```bash
+cargo run --release
+```
+
+如果一切正常，程序应该正常运行。
+
+## 下一步
+
+在这一步中，我们将 `app.rs` 中的组件进行拆分成了不同的模块。下一步，我们会为程序增加一个扩展，当在网格模式下点击图片时候，自动切换到 幻灯片放映 模式

@@ -1,0 +1,217 @@
+# Makepad 项目打包指南
+
+打包 Makepad 项目的要求取决于目标平台。本指南提供了如何为不同平台（包括桌面和移动平台）打包 Makepad 应用程序的概述。
+
+## 一、桌面打包
+
+Makepad 官方并没有提供为桌面环境打包的工具， 因此我们使用 [`cargo-packager`](https://docs.crabnebula.dev/packager/)这一常用的社区打包工具来打包您的 Makepad 应用程序。
+
+### 预打包测试
+
+#### 1. 安装 `cargo-packager`
+
+```bash
+cargo install cargo-packager --locked
+```
+
+此工具帮助您为 Makepad 应用程序创建包，包括为不同平台生成必要的文件和目录。
+
+#### 2. 配置 `cargo-packager`
+
+配置`cargo-packager`的方式：
+
+1. 通过在`Cargo.toml`中的[package.metadata.packager]属性以包含打包所需的元数据，包括对特定桌面端的配置，详见下面的配置内容。
+2. 新建一个 `packager.toml` 文件来指定其他打包选项。
+
+更多可配置的参数详见`cargo-packager`的官方文档：https://docs.crabnebula.dev/packager/#configuration
+
+本指南选择使用`cargo-packager`大部分应用配置选择的位置： `Cargo.toml` 中作为示例：
+
+```toml
+[package.metadata.packager]
+product_name = "YourAppName"
+identifier = "com.yourcompany.yourapp"
+authors = ["Your Name or Team name"]
+description = "A brief description of your Makepad application"
+### 注意：`long_description` 的每行最多 80 个字符。
+long_description = "..."
+icons = ["./assets/icon.png"]
+out_dir = "./dist"
+# ... 其他打包选项，请查看 cargo-packager 文档了解更多详情。
+
+before-packaging-command = """
+robius-packaging-commands before-packaging \
+    --force-makepad \
+    --binary-name <main-binary-name> \
+    --path-to-binary ./target/release/<main-binary-name>
+"""
+
+# 我们需要指定将包含在包中的资源，打包器将把它们复制到输出目录。
+# 注意：如果您使用的是 Makepad v1.0 或更高版本，则需要指定更多资源文件：
+resources = [
+    ######### ⚠️ Makepad 自带的资源文件，当前情况下你同样需要导入 #########
+    { src = "./dist/resources/makepad_widgets", target = "makepad_widgets" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold", target = "makepad_fonts_chinese_bold" },
+    { src = "./dist/resources/makepad_fonts_chinese_bold_2", target = "makepad_fonts_chinese_bold_2" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular", target = "makepad_fonts_chinese_regular" },
+    { src = "./dist/resources/makepad_fonts_chinese_regular_2", target = "makepad_fonts_chinese_regular_2" },
+    { src = "./dist/resources/makepad_fonts_emoji", target = "makepad_fonts_emoji" },
+
+    ######### ⚠️ 此处是你自己项目中的资源文件 #########
+    { src = "./dist/resources/you_app_resource", target = "you_app_resource" },
+]
+
+before-each-package-command = """
+robius-packaging-commands before-each-package \
+    --force-makepad \
+    --binary-name <main-binary-name> \
+    --path-to-binary ./target/release/<main-binary-name> \
+"""
+
+```
+
+我们使用小型的 `robius-packaging-commands` CLI 工具在打包 Makepad 应用程序之前运行打包命令。
+
+您可以使用以下命令安装 `robius-packaging-commands` 工具：
+
+```bash
+cargo install --version 0.2.0 --locked --git https://github.com/project-robius/robius-packaging-commands.git robius-packaging-commands
+```
+注意robius-packaging-commands工具的版本为 0.2.0
+
+如果您不想使用 `robius-packaging-commands` 工具，您也可以手动自己编写打包命令，将你的资源和 makepad 按照你自己的逻辑导入也可以，但如果是单纯的资源的导入建议你使用该工具以方便操作。
+
+例如：
+
+```toml
+# packaging/before-packaging-command 你自己的编写的导入资源的库工具 ⚠️ 你依旧需要自己处理 makepad 的资源导入，列如字体。
+[package.metadata.packager]
+
+before-packaging-command = """
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-packaging
+"""
+
+before-each-package-command = """
+cargo run --manifest-path packaging/before-packaging-command/Cargo.toml before-each-package
+"""
+```
+事实上`robius-packaging-commands`工具就是完成以上的导入工作，如果你实在是需要自定义顺序的导入，才建议你重新一个新的库钩子在`cargo-packager`运行时进行资源的自定义处理。
+
+### 各个桌面端平台打包
+
+#### 1. Linux (Debian/Ubuntu)
+
+1. 安装打包所需的依赖项：
+
+```bash
+sudo apt-get update
+sudo apt-get install libssl-dev libsqlite3-dev pkg-config binfmt-support libxcursor-dev libx11-dev libasound2-dev libpulse-dev
+```
+
+2. 运行打包命令：
+
+```bash
+  cargo packager --release
+```
+
+#### 2. Windows(Windows-2022)
+
+如果您已经按照上述说明配置了 `Cargo.toml` 文件，您可以运行打包命令：
+
+```bash
+cargo packager --release --formats nsis
+```
+
+#### 3. MacOS
+
+如果您已经按照上述说明配置了 `Cargo.toml` 文件，您可以运行打包命令：
+
+```bash
+cargo packager --release
+```
+
+查看更多关于 `robius-packaging-commands` 的信息：[https://github.com/project-robius/robius-packaging-commands/blob/main/README.md]
+
+## 二、移动平台打包
+
+幸运的是，在移动平台上打包 Makepad 并不需要像桌面端一样复杂，因为 makepad 官方就提供了 `cargo-makepad` 作为移动平台应用打包的工具。
+
+### 安装 `cargo-makepad`
+
+```bash
+cargo install --force --git https://github.com/makepad/makepad.git --branch dev cargo-makepad
+```
+
+### 1. Android
+
+Android 可以使用 `cargo-makepad` 轻松打包：
+
+```bash
+cargo makepad android install-toolchain
+cargo makepad android build -p your_profile_name --release # 这将构建 apk，然后您可以在设备或模拟器上安装它。
+```
+
+### 2. iOS
+
+```bash
+cargo makepad apple ios install-toolchain
+```
+
+使用 `cargo-makepad` 构建 iOS 应用：
+```bash
+cargo makepad apple ios --org=organisation_name --app=product_name run-sim/run-device -p your_profile_name --release
+
+为了让 makepad 能够在真实设备上安装 ios 应用程序，需要一个配置文件。
+要创建一个，请在 xcode 中创建一个空应用程序，给它一个组织名称和产品名称，您需要完全复制并且不带空格/奇怪字符到 --org=x 和 --app=x 中
+                         --stable 使用稳定编译器
+ 还要在设备上至少运行一次，这样配置文件就会被创建
+                         --org=organisation_name
+                         --app=product_name
+ 如果您有多个签名身份或设备或配置文件，您可能需要明确设置它
+                         --profile=
+                         --cert=
+                         --device=
+```
+
+由于 `cargo-makepad` 并没有单独的 `build` 命令，您可以直接使用 `run-sim` 或 `run-device` 命令来构建应用程序, 然后进行打包。
+
+```bash
+# 通过这样的命令来构建和运行 iOS 模拟器上的应用程序
+cargo makepad apple ios --org=org.robius --app=robrix run-sim -p robrix --release
+
+# cargo-makepad 工具将会编译和打包ios应用程序，在./target/makepad-apple-app/aarch64-apple-ios-sim/release/robrix.app目录下生成相应的应用程序包。
+# 通过 zip 命令将 .app 目录压缩为 .zip 文件，然后您可以将其分发给其他人，或者上传到 TestFlight 或 App Store。
+
+# 通过这样的命令来构建和运行 iOS 设备上的应用程序, 其中--device(device_identifier) 可设置虚拟的。
+cargo makepad apple ios \
+  --org=org.robius \
+  --app=robrix \
+  --profile=$YOUR_PROFILE_PATH \
+  --cert=$YOUR_CERT_FINGERPRINT \
+  --device=IPhone \
+  run-device -p robrix --release
+
+# 同样，cargo-makepad 工具将会编译和打包ios应用程序，在./target/makepad-apple-app/aarch64-apple-ios/release/robrix.app目录下生成相应的应用程序包。
+cd ./target/makepad-apple-app/aarch64-apple-ios/release
+mkdir Payload
+cp -r robrix.app Payload/
+zip -r robrix-ios.ipa Payload
+# 然后您可以将生成的 .ipa 文件上传到 TestFlight 或 App Store。
+
+```
+
+
+## 三、Wasm 打包
+
+Makepad 还支持将应用程序编译为 WebAssembly (Wasm)，这使得您的应用可以在浏览器中运行。
+
+要为 Wasm 打包应用程序，您可以使用以下命令：
+
+```bash
+cargo makepad wasm install-toolchain # install Wasm 工具链
+cargo makepad wasm run -p your_profile_name --release
+```
+
+这将构建您的 Makepad 应用程序为 Wasm 模块，并在浏览器中运行, 同时在/target/makepad-wasm-app/release/your_profile_name/目录下生成相应的 HTML 和 JavaScript 文件。
+
+它包括：makepad静态资源和您的应用程序的资源文件, 以及相关的js_bridge文件以及 wasm 模块。
